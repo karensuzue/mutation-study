@@ -7,6 +7,7 @@ class Organism {
 private:
     emp::BitVector genome{};
     double fitness = 0.0; // normalized and maximized
+    double mut_rate = 0.0; // per gene
 
 public:
     Organism() = default;
@@ -19,7 +20,9 @@ public:
       : genome(emp::BitVector (genome_size)) {}
 
     friend std::ostream & operator<<(std::ostream & os, const Organism & org) {
-        os << "Genome=" << org.GetGenome() << ", Fitness=" << org.fitness;
+        os << "Genome=" << org.GetGenome() 
+           << ", Fitness=" << org.fitness
+           << ", Mutation=" << org.mut_rate;
         return os;
     }
 
@@ -29,17 +32,21 @@ public:
     double GetFitness() const { return fitness; }
     void SetFitness(double f) { fitness = f; }
 
+    double GetMutationRate() const { return mut_rate; }
+    void SetMutationRate(double m) { mut_rate = m; }
+
     // Return a mutated COPY
-    Organism Mutate(emp::Random & random, double per_bit_mut) const {
+    Organism Mutate(emp::Random & random) const {
         emp::BitVector new_genome = genome;
-        for (size_t i = 0; i < new_genome.GetSize(); ++i) {
-            if (random.P(per_bit_mut)) {
+        for (size_t i = 0; i < new_genome.size(); ++i) {
+            if (random.P(mut_rate)) {
                 new_genome.Toggle(i);
             }
         }
 
         Organism offspring(new_genome);
         offspring.SetFitness(0.0); // remove parent's fitness
+        offspring.SetMutationRate(random.GetDouble());
         return offspring;
     }
 
