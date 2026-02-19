@@ -44,7 +44,7 @@ private:
     size_t tour_size = 2;
     size_t intmatch_target = 5; // for IntMatch problem
 
-    size_t generation = 0;
+    size_t generation = 0; // current generation
     size_t print_step = 100;   
 
     // int seed = 11;
@@ -54,6 +54,8 @@ private:
     std::shared_ptr<Fitness> fitness_function;
 
     emp::vector<GenerationStats> history;
+
+    bool const_mutation_rate = false; // once toggled, this keeps mutation constant
 
 public:
     Population() = default;
@@ -66,19 +68,20 @@ public:
     Organism & operator[](unsigned int index) {
         return organisms[index];
     }
-
     const Organism & operator[](unsigned int index) const {
         return organisms[index];
     }
 
-    size_t GetSize() const {
-        return organisms.size(); // could return pop_size here but...
-    }
+    size_t GetSize() const { return organisms.size(); }
+
+    void ToggleConstantMutation() { const_mutation_rate = !const_mutation_rate; }
+    bool IsConstantMutation() { return const_mutation_rate; }
 
     friend std::ostream & operator<<(std::ostream & os, const Population & pop) {
-        assert(pop.pop_size == pop.organisms.size() && "pop_size does not match pop.organisms.size().");
+        assert(pop.pop_size == pop.organisms.size() && 
+               "pop_size does not match pop.organisms.size().");
         for (size_t i = 0; i < pop.pop_size; ++i) {
-            os << pop.organisms[i] << '\n';
+            os << pop[i] << '\n';
         }
         os << std::endl;
         return os;
@@ -96,7 +99,8 @@ public:
 
     // Copy the given genome a 'pop_size' number of times
     void InitializeUniform(const emp::BitVector & genome) {
-        assert(genome.size() == genome_size && "Input genome size does not match the configured value.");
+        assert(genome.size() == genome_size && 
+               "Input genome size does not match the configured value.");
         organisms.clear();
         for (size_t i = 0; i < pop_size; ++i) {
             organisms.emplace_back(genome);
@@ -105,7 +109,7 @@ public:
 
     // Add a 'pop_size' number of isogenic organisms with the configured genome size
     void InitializeUniform(emp::Random & random) {
-        organisms.clear(); // justtttt in case
+        organisms.clear(); 
         emp::BitVector genome(genome_size, random);
         for (size_t i = 0; i < pop_size; ++i) {
             organisms.emplace_back(genome);
@@ -119,7 +123,15 @@ public:
             emp::BitVector genome(genome_size, random);
             organisms.emplace_back(genome);
         }        
-    }   
+    }
+    
+    // Set all organisms to the same mutation rate
+    void SetPopulationMutation(double mutation_rate) {
+        assert(organisms.size() > 0 && "The population is empty.");
+        for (Organism & org : organisms) {
+            org.SetMutationRate(mutation_rate);
+        }
+    }
 
     void ConfigureSelector() {
         if (selector_name == "Tournament") {
@@ -152,7 +164,8 @@ public:
 
     // In each generation, produce a 'pop_size' number of offspring
     void RunOneGeneration(emp::Random & random) {
-        assert(pop_size == organisms.size() && "pop_size does not match pop.organisms.size().");
+        assert(pop_size == organisms.size() && 
+               "pop_size does not match pop.organisms.size().");
 
         if (!selector) ConfigureSelector();
         if (!fitness_function) ConfigureFitnessFunction();
@@ -161,7 +174,7 @@ public:
 
         for (size_t i = 0; i < pop_size; ++i) {
             const size_t parent_idx = selector->Select(organisms, random);
-            next_pop[i] = organisms[parent_idx].Mutate(random);
+            next_pop[i] = organisms[parent_idx].Mutate(random, const_mutation_rate);
         }
 
         organisms.swap(next_pop);
@@ -198,7 +211,8 @@ public:
         double highest_mut = 0.0;
         int highest_mut_id = 0; // they start out the same
 
-        assert(pop_size == organisms.size() && "pop_size does not match pop.organisms.size().");
+        assert(pop_size == organisms.size() && 
+               "pop_size does not match pop.organisms.size().");
         for (size_t i = 0; i < pop_size; ++i) {
             const Organism & org = organisms[i];
             
