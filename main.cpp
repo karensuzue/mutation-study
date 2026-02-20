@@ -5,17 +5,7 @@
 #include "Organism.hpp"
 #include "Population.hpp"
 
-int main(/*int argc, char * argv[]*/) {
-    emp::Random random{0};
-
+int main(/*int argc, char * argv[]*/) {   
     Population pop;
-    pop.InitializeUniform(random);
-    pop.SetPopulationMutation(0.5);
-    pop.EvaluateFitness();
-    std::cout << pop << std::endl;
-    // if (!pop.IsConstantMutation()) pop.ToggleConstantMutation();
-    pop.RunOneGeneration(random);
-    std::cout << pop << std::endl;
-    
-    // pop.MultiRun();
+    pop.MultiRun();
 }

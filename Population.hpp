@@ -32,17 +32,21 @@ class Population {
 private:
     emp::vector<Organism> organisms;
 
-    size_t genome_size = 10;
+    size_t genome_size = 100;
     size_t max_generations = 1000;
     size_t max_replicates = 20;
-    size_t pop_size = 50;
+    size_t pop_size = 3600;
 
     std::string selector_name = "Tournament";
     // std::string fitness_name = "OneMax";
-    std::string fitness_name = "IntMatch";
+    // std::string fitness_name = "AggregateMatch";
+    // std::string fitness_name = "BitwiseMatch";
+    std::string fitness_name = "KDeceptiveTrap";
+    // std::string fitness_name = "NKLandscape";
 
-    size_t tour_size = 2;
-    size_t intmatch_target = 5; // for IntMatch problem
+    size_t tour_size = 3;
+    size_t intmatch_target = 784; // for IntMatch problem
+    size_t num_blocks = 20; // for KDeceptiveTrap problem
 
     size_t generation = 0; // current generation
     size_t print_step = 100;   
@@ -146,8 +150,14 @@ public:
         if (fitness_name == "OneMax") {
             fitness_function = std::make_shared<OneMaxFitness>();
         }
-        else if (fitness_name == "IntMatch") {
-            fitness_function = std::make_shared<IntMatchFitness>(intmatch_target, genome_size);
+        else if (fitness_name == "AggregateMatch") {
+            fitness_function = std::make_shared<AggregateMatchFitness>(intmatch_target, genome_size);
+        }
+        else if (fitness_name == "BitwiseMatch") {
+            fitness_function = std::make_shared<BitwiseMatchFitness>(intmatch_target, genome_size);
+        }
+        else if (fitness_name == "KDeceptiveTrap") {
+            fitness_function = std::make_shared<KDeceptiveTrapFitness>(genome_size, num_blocks);
         }
         else {
             throw std::runtime_error("Unknown fitness function: " + fitness_name);
@@ -181,6 +191,9 @@ public:
     }
 
     void Run(emp::Random & random) {
+        InitializeUniform(random);
+        SetPopulationMutation(0.05);
+
         for (generation = 0; generation < max_generations; ++generation) {
             EvaluateFitness();
             RecordGeneration(generation);
@@ -267,13 +280,17 @@ public:
         }
 
         if (mutation_file.is_open()) {
-            mutation_file << "Generation,Best_M,Mean_M,Highest_ID\n";
-            mutation_file << std::fixed << std::setprecision(3);
+            // mu: per-site mutation rate
+            // U: expected number of mutations per organism (genome-wide)
+            mutation_file << "Generation,Best_mu,Mean_mu,Best_U,Mean_U,Highest_ID\n";
+            mutation_file << std::fixed << std::setprecision(6);
 
             for (const GenerationStats & gen : history) {
                 mutation_file << gen.generation << ","
                               << gen.highest_mut << ","
                               << gen.avg_mut << ","
+                              << gen.highest_mut * genome_size << ","
+                              << gen.avg_mut * genome_size << ","
                               << gen.highest_mut_id << "\n";
             }
         }
