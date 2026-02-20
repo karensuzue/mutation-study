@@ -7,7 +7,7 @@
 #include "emp/math/Random.hpp"
 
 // Minimum and maximum mutation rates
-static constexpr double MUT_MIN = 1e-6; // if 0 can't be shifted
+static constexpr double MUT_MIN = 1e-12; // if 0 can't be shifted
 static constexpr double MUT_MAX = 1.0;
 
 class Organism {

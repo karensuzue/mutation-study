@@ -33,9 +33,12 @@ private:
     emp::vector<Organism> organisms;
 
     size_t genome_size = 100;
-    size_t max_generations = 1000;
+    size_t max_generations = 15000;
     size_t max_replicates = 20;
     size_t pop_size = 3600;
+
+    // per-site mutation rate, applied to all orgs
+    double init_mut_rate = 0.0;
 
     std::string selector_name = "Tournament";
     // std::string fitness_name = "OneMax";
@@ -77,7 +80,10 @@ public:
     }
 
     size_t GetSize() const { return organisms.size(); }
+    size_t GetGenomeSize() const { return genome_size; }
 
+    void SetInitMutation(double mu) { init_mut_rate = mu; }
+    double GetInitMutation() const { return init_mut_rate; }
     void ToggleConstantMutation() { const_mutation_rate = !const_mutation_rate; }
     bool IsConstantMutation() { return const_mutation_rate; }
 
@@ -192,36 +198,34 @@ public:
 
     void Run(emp::Random & random) {
         InitializeUniform(random);
-        SetPopulationMutation(0.05);
+        SetPopulationMutation(init_mut_rate);
 
         for (generation = 0; generation < max_generations; ++generation) {
             EvaluateFitness();
             RecordGeneration(generation);
-            if (generation % print_step == 0) { 
-                PrintStats(generation);
-            }
+            if (generation % print_step == 0) PrintStats(generation);
             RunOneGeneration(random);
         }
     }
 
-    void MultiRun(size_t num_replicates = 0) {
+    void MultiRun(const std::string & prefix, size_t num_replicates = 0) {
         if (num_replicates == 0) num_replicates = max_replicates;
         for (size_t replicate = 0; replicate < num_replicates; ++replicate) {
             history.clear();
             emp::Random random(replicate + 1);
             Run(random);
-            ExportHistory("history_" + std::to_string(replicate));
+            ExportHistory("history_" + prefix + std::to_string(replicate));
         }
     }
 
     void RecordGeneration(size_t gen) {
         double avg_f = 0.0;
         // double median_f = 0.0;
-        double best_f = 0.0;
+        double best_f = organisms[0].GetFitness();
         int best_id = -1;
 
         double avg_mut = 0.0;
-        double highest_mut = 0.0;
+        double highest_mut = organisms[0].GetMutationRate();
         int highest_mut_id = 0; // they start out the same
 
         assert(pop_size == organisms.size() && 
