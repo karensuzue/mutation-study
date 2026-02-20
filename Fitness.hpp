@@ -112,6 +112,4 @@ struct KDeceptiveTrapFitness : Fitness {
     }
 };
 
-struct NKFitness : Fitness {
 
-};

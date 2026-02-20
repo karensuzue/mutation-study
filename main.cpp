@@ -7,7 +7,7 @@
 #include "Organism.hpp"
 #include "Population.hpp"
 
-// TODO: SettingsManager!
+// TODO: SettingsManager! Config files! 
 int main(/*int argc, char * argv[]*/) { 
 
     // EXPERIMENT 1 - CONSTANT MUTATION
@@ -30,11 +30,34 @@ int main(/*int argc, char * argv[]*/) {
         10.0
     };
 
-    for (double  U : U_rates) {
+    // for (double  U : U_rates) {
+    //     Population pop;
+
+    //     // Ensure contant mutation-rate inheritance
+    //     if (!pop.IsConstantMutation()) pop.ToggleConstantMutation();
+
+    //     // Convert genome-wide U to per-site mu
+    //     const double mu = U / static_cast<double>(pop.GetGenomeSize());
+    //     pop.SetInitMutation(mu);
+
+    //     // Formatting
+    //     std::ostringstream oss;
+    //     oss << std::scientific << std::setprecision(4) << U;
+    //     const std::string tag = oss.str();
+
+    //     std::cout << "Running U=" << tag << " (mu=" 
+    //         << std::scientific << std::setprecision(4) << mu << ")\n";
+    //     pop.MultiRun(tag);
+    // }
+
+    // EXPERIMENT 2 - Evolving mutation rate in a static environment
+    // Two starting rates - below and above "optimal" (U=1.3895)
+    const emp::vector<double> evolve_U_rates = {1e-3, 10};    
+    for (double  U : evolve_U_rates) {
         Population pop;
 
-        // Ensure contant mutation-rate inheritance
-        if (!pop.IsConstantMutation()) pop.ToggleConstantMutation();
+        // Mutation rates can now evolve
+        if (pop.IsConstantMutation()) pop.ToggleConstantMutation();
 
         // Convert genome-wide U to per-site mu
         const double mu = U / static_cast<double>(pop.GetGenomeSize());

@@ -222,7 +222,7 @@ public:
         double avg_f = 0.0;
         // double median_f = 0.0;
         double best_f = organisms[0].GetFitness();
-        int best_id = -1;
+        int best_id = 0;
 
         double avg_mut = 0.0;
         double highest_mut = organisms[0].GetMutationRate();
