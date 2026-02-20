@@ -203,7 +203,7 @@ public:
         for (generation = 0; generation < max_generations; ++generation) {
             EvaluateFitness();
             RecordGeneration(generation);
-            if (generation % print_step == 0) PrintStats(generation);
+            // if (generation % print_step == 0) PrintStats(generation);
             RunOneGeneration(random);
         }
     }
@@ -214,7 +214,7 @@ public:
             history.clear();
             emp::Random random(replicate + 1);
             Run(random);
-            ExportHistory("history_" + prefix + std::to_string(replicate));
+            ExportHistory("history_" + prefix + "_" + std::to_string(replicate));
         }
     }
 

@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 #include <string>
 
 #include "emp/base/vector.hpp"
@@ -39,8 +40,14 @@ int main(/*int argc, char * argv[]*/) {
         const double mu = U / static_cast<double>(pop.GetGenomeSize());
         pop.SetInitMutation(mu);
 
-        std::cout << "Running U=" << U << " (mu=" << mu << ")\n";
-        pop.MultiRun(std::to_string(U));
+        // Formatting
+        std::ostringstream oss;
+        oss << std::scientific << std::setprecision(4) << U;
+        const std::string tag = oss.str();
+
+        std::cout << "Running U=" << tag << " (mu=" 
+            << std::scientific << std::setprecision(4) << mu << ")\n";
+        pop.MultiRun(tag);
     }
 
 }
