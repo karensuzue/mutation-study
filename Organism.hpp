@@ -1,3 +1,7 @@
+/*  
+ * This class represents a standard bit-vector organism.
+ * This representation does not differentiate between genotype and phenotype.
+ */
 #pragma once
 
 #include <algorithm>
