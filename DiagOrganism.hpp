@@ -2,7 +2,7 @@
  * This class represents an organism with both phenotype and genotype representations,
  * consisting of a vector of genes, where each gene is a number from 0 to 100.
  * This representation is taken from:
- *      Hernandez, J. G., Lalejini, A., & Ofria, C. (2022),
+ *      Hernandez, J. G., Lalejini, A., & Ofria, C. (2022).
  *      A suite of diagnostic metrics for characterizing selection schemes
  */
 
@@ -39,7 +39,6 @@ double ReflectIntoRange(double value, double lo=GENE_MIN, double hi=GENE_MAX) {
 
 // TODO: polymorphism with the other Organism class :)
 class DiagOrganism {
-// public:
     // using Translator = std::function<void(const emp::vector<double> & /*genome*/,
     //                                       emp::vector<double> & /*phenotype*/)>;
 private:
@@ -59,6 +58,13 @@ public:
 
     DiagOrganism(size_t genome_size)
       : genome(genome_size, 0.0), phenotype(genome_size, 0.0) {}
+
+    DiagOrganism(size_t genome_size, emp::Random & random) 
+      : genome(genome_size, 0.0) {
+        for (double & g : genome) {
+            g = random.GetDouble(GENE_MIN, GENE_MAX);
+        }
+    }
 
     friend std::ostream & operator<<(std::ostream & os, const DiagOrganism & org) {
         os << "Genome="      << org.genome

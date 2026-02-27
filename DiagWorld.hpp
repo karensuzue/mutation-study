@@ -1,19 +1,26 @@
+/*
+ * This class instantiates evolutionary runs.
+ * Based on:
+ *      Hernandez, J. G., Lalejini, A., & Ofria, C. (2022).
+ *      A suite of diagnostic metrics for characterizing selection schemes.
+ */
+
 #pragma once
 
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <memory>
 #include <stdexcept>
 #include <cassert>
 #include <iomanip>
+#include <functional>
 
 #include "emp/base/vector.hpp"
 #include "emp/math/Random.hpp"
 
 #include "DiagOrganism.hpp"
 #include "DiagSelect.hpp"
-#include "DiagFitness.hpp"
+#include "Diagnostics.hpp"
 
 struct GenerationStats {
   int generation;
@@ -27,51 +34,82 @@ struct GenerationStats {
   size_t highest_mut_id;
 };
 
+class DiagWorld {
+    using phenotype_t = emp::vector<double>;
+    using genome_t = emp::vector<double>;
+    using pop_t = emp::vector<DiagOrganism>;
 
-class DiagPopulation {
+    // Selects ONE parent index
+    using select_fn_t = std::function<size_t(const pop_t &, emp::Random &)>;
+    // Translate genome to phenotype 
+    using translate_fn_t = std::function<phenotype_t(const genome_t &)>;
+
 private:
-    emp::vector<DiagOrganism> organisms;
+    pop_t organisms;
 
-    size_t genome_size = 100;
+    // size_t genome_size = 100;
+    size_t genome_size = 10;
     size_t max_generations = 15000;
     size_t max_replicates = 20;
-    size_t pop_size = 3600;
+    // size_t pop_size = 3600;
+    size_t pop_size = 100;
 
     // per-site mutation rate, applied to all orgs
     double init_mut_rate = 0.0;
+    bool const_mutation_rate = false; // once toggled, this keeps mutation constant
 
     std::string selector_name = "Tournament";
-    std::string fitness_name = "ExploitationRate";
-    bool valley_crossing = false; // this toggles the sawtooth transformation
+    std::string translate_name = "ExploitationRate";
+    bool valley_crossing = true; // toggles sawtooth transformation
 
     size_t tour_size = 3;
 
     size_t generation = 0; // current generation
     size_t print_step = 100;   
 
-    std::shared_ptr<DiagSelector> selector;
-    std::shared_ptr<DiagFitness> fitness_function;
+    DiagSelect diagselect;
+    Diagnostics diagnostic;
+    select_fn_t select_fn;
+    translate_fn_t translate_fn;
 
     emp::vector<GenerationStats> history;
 
-    bool const_mutation_rate = false; // once toggled, this keeps mutation constant
+    // Taken from: https://github.com/jgh9094/ECJ-2023-Suite-Of-Diagnostic-Metrics-For-Characterizing-Selection-Schemes
+    // Multi-valley crossing data
+    // valley peaks for each floored integer gene value
+    const phenotype_t peaks = {-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0,  8.0,  9.0,
+                                9.0, 11.0, 11.0, 11.0, 14.0, 14.0, 14.0, 14.0, 18.0, 18.0,
+                                18.0, 18.0, 18.0, 23.0, 23.0, 23.0, 23.0, 23.0, 23.0, 29.0,
+                                29.0, 29.0, 29.0, 29.0, 29.0, 29.0, 36.0, 36.0, 36.0, 36.0,
+                                36.0, 36.0, 36.0, 36.0, 44.0, 44.0, 44.0, 44.0, 44.0, 44.0,
+                                44.0, 44.0, 44.0, 53.0, 53.0, 53.0, 53.0, 53.0, 53.0, 53.0,
+                                53.0, 53.0, 53.0, 63.0, 63.0, 63.0, 63.0, 63.0, 63.0, 63.0,
+                                63.0, 63.0, 63.0, 63.0, 74.0, 74.0, 74.0, 74.0, 74.0, 74.0,
+                                74.0, 74.0, 74.0, 74.0, 74.0, 74.0, 86.0, 86.0, 86.0, 86.0,
+                                86.0, 86.0, 86.0, 86.0, 86.0, 86.0, 86.0, 86.0, 86.0, 99.0};
+    // unique peaks
+    const phenotype_t peaks_set = {8.0, 9.0, 11.0, 14.0, 18.0, 23.0, 29.0, 36.0, 44.0, 53.0, 63.0, 74.0, 86.0, 99.0};
+    // where do the dips start?
+    const double dips_start = 8.0;
+    // where do dips end?
+    const double dips_end = 99.9;
 
 public:
-    Population() = default;
-    Population(const Population &) = default;
-    Population(Population &&) = default;
+    DiagWorld() = default;
+    DiagWorld(const DiagWorld &) = default;
+    DiagWorld(DiagWorld &&) = default;
 
-    Population & operator=(const Population &) = default;
-    Population & operator=(Population &&) = default;
+    DiagWorld & operator=(const DiagWorld &) = default;
+    DiagWorld & operator=(DiagWorld &&) = default;
 
-    Organism & operator[](unsigned int index) {
+    DiagOrganism & operator[](unsigned int index) {
         return organisms[index];
     }
-    const Organism & operator[](unsigned int index) const {
+    const DiagOrganism & operator[](unsigned int index) const {
         return organisms[index];
     }
 
-    size_t GetSize() const { return organisms.size(); }
+    size_t GetPopSize() const { return pop_size; }
     size_t GetGenomeSize() const { return genome_size; }
 
     void SetInitMutation(double mu) { init_mut_rate = mu; }
@@ -79,7 +117,10 @@ public:
     void ToggleConstantMutation() { const_mutation_rate = !const_mutation_rate; }
     bool IsConstantMutation() { return const_mutation_rate; }
 
-    friend std::ostream & operator<<(std::ostream & os, const Population & pop) {
+    void ToggleValleyCrossing() { valley_crossing = !valley_crossing; }
+    bool IsValleyCrossing() { return valley_crossing; }
+
+    friend std::ostream & operator<<(std::ostream & os, const DiagWorld & pop) {
         assert(pop.pop_size == pop.organisms.size() && 
                "pop_size does not match pop.organisms.size().");
         for (size_t i = 0; i < pop.pop_size; ++i) {
@@ -90,83 +131,96 @@ public:
     }
 
     // Copy the given 'org' a 'pop_size' number of times
-    void InitializeUniform(const Organism & org) {
+    void InitializeUniform(const DiagOrganism & org) {
         assert(org.GetGenome().size() == genome_size && 
                "Input organism genome size does not match the configured value.");
         organisms.clear(); // justtttt in case
+        organisms.reserve(pop_size);
         for (size_t i = 0; i < pop_size; ++i) {
             organisms.push_back(org);
         }
     }
 
     // Copy the given genome a 'pop_size' number of times
-    void InitializeUniform(const emp::BitVector & genome) {
+    void InitializeUniform(const genome_t & genome) {
         assert(genome.size() == genome_size && 
                "Input genome size does not match the configured value.");
         organisms.clear();
+        organisms.reserve(pop_size);
         for (size_t i = 0; i < pop_size; ++i) {
             organisms.emplace_back(genome);
         }
     }
 
-    // Add a 'pop_size' number of isogenic organisms with the configured genome size
     void InitializeUniform(emp::Random & random) {
-        organisms.clear(); 
-        emp::BitVector genome(genome_size, random);
+        organisms.clear();
+        organisms.reserve(pop_size);
+        DiagOrganism org(genome_size, random);
         for (size_t i = 0; i < pop_size; ++i) {
-            organisms.emplace_back(genome);
+            organisms.push_back(org);
         }
     }
 
     // Add a 'pop_size' number of randomized organisms with the configured genome size
     void InitializeRandom(emp::Random & random) {
         organisms.clear();
+        organisms.reserve(pop_size);
         for (size_t i = 0; i < pop_size; ++i) {
-            emp::BitVector genome(genome_size, random);
-            organisms.emplace_back(genome);
+            organisms.emplace_back(genome_size, random);
         }        
     }
     
     // Set all organisms to the same mutation rate
     void SetPopulationMutation(double mutation_rate) {
-        assert(organisms.size() > 0 && "The population is empty.");
-        for (Organism & org : organisms) {
+        assert(!organisms.empty() && "The population is empty.");
+        for (DiagOrganism & org : organisms) {
             org.SetMutationRate(mutation_rate);
         }
     }
 
+    // void TranslatePopulationGenome() {
+    //     assert(!organisms.empty() && "The population is empty.");
+    //     for (DiagOrganism & org : organisms) {
+    //         org.SetPhenotype(translate_fn(org.GetGenome()));
+    //     }
+    // }
+
     void ConfigureSelector() {
+        // A little clunky but I wanted to try something new :)
         if (selector_name == "Tournament") {
-            selector = std::make_shared<TournamentSelector>(tour_size);
+            select_fn = [this](const pop_t & pop,
+                        emp::Random& random) {
+                            return diagselect.Tournament(pop, tour_size, random);
+                        };
         }
         else {
             throw std::runtime_error("Unknown Selector: " + selector_name);
         }
     }
 
-    void ConfigureFitnessFunction() {
-        if (fitness_name == "OneMax") {
-            fitness_function = std::make_shared<OneMaxFitness>();
-        }
-        else if (fitness_name == "AggregateMatch") {
-            fitness_function = std::make_shared<AggregateMatchFitness>(intmatch_target, genome_size);
-        }
-        else if (fitness_name == "BitwiseMatch") {
-            fitness_function = std::make_shared<BitwiseMatchFitness>(intmatch_target, genome_size);
-        }
-        else if (fitness_name == "KDeceptiveTrap") {
-            fitness_function = std::make_shared<KDeceptiveTrapFitness>(genome_size, num_blocks);
+    void ConfigureTranslator() {
+        if (translate_name == "ExploitationRate") {
+            translate_fn = [this](const genome_t & g) {
+                return diagnostic.ExploitationRate(g);
+            };
         }
         else {
-            throw std::runtime_error("Unknown fitness function: " + fitness_name);
+            throw std::runtime_error("Unknown diagnostic: " + translate_name);
         }
     }
 
     void EvaluateFitness() {
-        if (!fitness_function) ConfigureFitnessFunction();
-        for (Organism & org : organisms) {
-            double fitness = fitness_function->Evaluate(org);
-            org.SetFitness(fitness);
+        if (!translate_fn) ConfigureTranslator();
+        for (DiagOrganism & org : organisms) {
+            const genome_t & g = org.GetGenome();
+            phenotype_t p = translate_fn(g);
+
+            if (valley_crossing) {
+                p = diagnostic.MultiValleyCrossing(p, peaks, dips_start, dips_end);
+            }
+            
+            org.SetPhenotype(p);
+            org.UpdateFitnessFromPhenotype();
         }
     }
 
@@ -175,16 +229,14 @@ public:
         assert(pop_size == organisms.size() && 
                "pop_size does not match pop.organisms.size().");
 
-        if (!selector) ConfigureSelector();
-        if (!fitness_function) ConfigureFitnessFunction();
+        if (!select_fn) ConfigureSelector();
+        if (!translate_fn) ConfigureTranslator();
 
-        emp::vector<Organism> next_pop(pop_size);
-
-        for (size_t i = 0; i < pop_size; ++i) {
-            const size_t parent_idx = selector->Select(organisms, random);
-            next_pop[i] = organisms[parent_idx].Mutate(random, const_mutation_rate);
+        pop_t next_pop(pop_size);
+        for (DiagOrganism & org : next_pop) {
+            const size_t parent_idx = select_fn(organisms, random);
+            org = organisms[parent_idx].Mutate(random, const_mutation_rate);
         }
-
         organisms.swap(next_pop);
     }
 
@@ -195,7 +247,7 @@ public:
         for (generation = 0; generation < max_generations; ++generation) {
             EvaluateFitness();
             RecordGeneration(generation);
-            // if (generation % print_step == 0) PrintStats(generation);
+            if (generation % print_step == 0) PrintStats(generation);
             RunOneGeneration(random);
         }
     }
@@ -211,6 +263,8 @@ public:
     }
 
     void RecordGeneration(size_t gen) {
+        assert(!organisms.empty());
+
         double avg_f = 0.0;
         // double median_f = 0.0;
         double best_f = organisms[0].GetFitness();
@@ -223,7 +277,7 @@ public:
         assert(pop_size == organisms.size() && 
                "pop_size does not match pop.organisms.size().");
         for (size_t i = 0; i < pop_size; ++i) {
-            const Organism & org = organisms[i];
+            const DiagOrganism & org = organisms[i];
             
             double org_f = org.GetFitness();
             avg_f += org_f;
