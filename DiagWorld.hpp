@@ -47,12 +47,13 @@ class DiagWorld {
 private:
     pop_t organisms;
 
-    // size_t genome_size = 100;
-    size_t genome_size = 10;
+    size_t genome_size = 100;
+    // size_t genome_size = 10;
     size_t max_generations = 15000;
+    // size_t max_generations = 1000;
     size_t max_replicates = 20;
-    // size_t pop_size = 3600;
-    size_t pop_size = 100;
+    size_t pop_size = 3600;
+    // size_t pop_size = 10;
 
     // per-site mutation rate, applied to all orgs
     double init_mut_rate = 0.0;
@@ -152,12 +153,22 @@ public:
         }
     }
 
+    // Create a random genome, make 'pop_size' copies of it
     void InitializeUniform(emp::Random & random) {
         organisms.clear();
         organisms.reserve(pop_size);
         DiagOrganism org(genome_size, random);
         for (size_t i = 0; i < pop_size; ++i) {
             organisms.push_back(org);
+        }
+    }
+
+    // Initialize the population with all-zero genomes
+    void InitializeUniform() {
+        organisms.clear()
+        organisms.reserve(pop_size);
+        for (size_t i = 0; i < pop_size; ++i) {
+            organisms.emplace(genome_size);
         }
     }
 
@@ -226,6 +237,7 @@ public:
 
     // In each generation, produce a 'pop_size' number of offspring
     void RunOneGeneration(emp::Random & random) {
+        // In case something goes wrong in the process...
         assert(pop_size == organisms.size() && 
                "pop_size does not match pop.organisms.size().");
 
@@ -242,20 +254,25 @@ public:
 
     void Run(emp::Random & random) {
         InitializeUniform(random);
+        // InitializeUniform();
         SetPopulationMutation(init_mut_rate);
 
         for (generation = 0; generation < max_generations; ++generation) {
             EvaluateFitness();
             RecordGeneration(generation);
-            if (generation % print_step == 0) PrintStats(generation);
+            // if (generation % print_step == 0) PrintStats(generation);
             RunOneGeneration(random);
         }
+        EvaluateFitness();
+        RecordGeneration(max_generations);
+        // PrintStats(max_generations);
     }
 
     void MultiRun(const std::string & prefix, size_t num_replicates = 0) {
         if (num_replicates == 0) num_replicates = max_replicates;
         for (size_t replicate = 0; replicate < num_replicates; ++replicate) {
             history.clear();
+            history.reserve(max_generations);
             emp::Random random(replicate + 1);
             Run(random);
             ExportHistory("history_" + prefix + "_" + std::to_string(replicate));

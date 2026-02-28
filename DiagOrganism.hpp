@@ -41,26 +41,29 @@ double ReflectIntoRange(double value, double lo=GENE_MIN, double hi=GENE_MAX) {
 class DiagOrganism {
     // using Translator = std::function<void(const emp::vector<double> & /*genome*/,
     //                                       emp::vector<double> & /*phenotype*/)>;
+    using phenotype_t = emp::vector<double>;
+    using genome_t = emp::vector<double>;
 private:
-    emp::vector<double> genome{};
-    emp::vector<double> phenotype{};
+    genome_t genome{};
+    phenotype_t phenotype{};
     double fitness = 0.0; // obtained by aggregating phenotype values 
     double mut_rate = MUT_MIN;
 
-    size_t start = 0; // starting index
+    size_t start = 0; // starting index for fitness calculations
 
 public:
     DiagOrganism() = default;
     DiagOrganism(const DiagOrganism &) = default;
 
-    DiagOrganism(const emp::vector<double> & init_genome)
+    // We let external functions handle the conversion from genome to phenotype
+    DiagOrganism(const genome_t & init_genome)
       : genome(init_genome), phenotype(init_genome.size(), 0.0) {}
-
+   
     DiagOrganism(size_t genome_size)
       : genome(genome_size, 0.0), phenotype(genome_size, 0.0) {}
 
     DiagOrganism(size_t genome_size, emp::Random & random) 
-      : genome(genome_size, 0.0) {
+      : genome(genome_size, 0.0), phenotype(genome_size, 0.0) {
         for (double & g : genome) {
             g = random.GetDouble(GENE_MIN, GENE_MAX);
         }
@@ -74,13 +77,13 @@ public:
         return os;
     }
 
-    emp::vector<double> & GetGenome() { return genome; }
-    const emp::vector<double> & GetGenome() const { return genome; }
-    void SetGenome(const emp::vector<double> & g) { genome = g; }
+    genome_t & GetGenome() { return genome; }
+    const genome_t & GetGenome() const { return genome; }
+    void SetGenome(const genome_t & g) { genome = g; }
 
-    emp::vector<double> & GetPhenotype() { return phenotype; }
-    const emp::vector<double> & GetPhenotype() const { return phenotype; }
-    void SetPhenotype(const emp::vector<double> & p) { phenotype = p; }
+    phenotype_t & GetPhenotype() { return phenotype; }
+    const phenotype_t & GetPhenotype() const { return phenotype; }
+    void SetPhenotype(const phenotype_t & p) { phenotype = p; }
 
     size_t GetGenomeSize() const { return genome.size(); }
 
@@ -101,14 +104,14 @@ public:
 
     size_t GetStartIndex() const { return start; }
     void SetStartIndex(size_t s) {
-        assert(s <= phenotype.size());
+        assert(s < phenotype.size());
         start = s;
     }
 
     // Aggregate phenotype by summing traits from start index
     void UpdateFitnessFromPhenotype() {
-        assert(start <= phenotype.size());
-        assert(phenotype.size() > 0);
+        assert(!phenotype.empty());
+        assert(start < phenotype.size());
         fitness = std::accumulate(phenotype.begin() + start, 
                                   phenotype.end(), 0.0);
     }
@@ -127,7 +130,7 @@ public:
                         double b=0.0, 
                         double pi=0.8) const {
         // Mutate genome using current mutation rate
-        emp::vector<double> new_genome = genome;
+        genome_t new_genome = genome;
         for (double & g : new_genome) {
             if (random.P(mut_rate)) {
                 const double step = random.GetNormal(0.0, 1.0);
