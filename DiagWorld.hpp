@@ -165,10 +165,10 @@ public:
 
     // Initialize the population with all-zero genomes
     void InitializeUniform() {
-        organisms.clear()
+        organisms.clear();
         organisms.reserve(pop_size);
         for (size_t i = 0; i < pop_size; ++i) {
-            organisms.emplace(genome_size);
+            organisms.emplace_back(genome_size);
         }
     }
 
