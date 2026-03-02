@@ -128,7 +128,7 @@ public:
                         bool const_mutation,
                         double sigma=0.138, 
                         double b=0.0, 
-                        double pi=0.8) const {
+                        double pi=0.5) const {
         // Mutate genome using current mutation rate
         genome_t new_genome = genome;
         for (double & g : new_genome) {

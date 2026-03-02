@@ -9,8 +9,8 @@ library(tidyr)
 library(ggplot2)
 library(stringr)
 
-root_const <- "./fig1/"
-root_evolve <- "./fig1-evolve/"
+root_const <- "./fig1-const-diag/"
+root_evolve <- "./fig1-evolve-diag/"
 
 # Function to grab the last row of a file
 read_last_row <- function(file) {
@@ -75,6 +75,14 @@ const_summary <- const_wide %>%
                  arrange(U) # sort rows by increasing U
 const_summary
 
+
+best_U_avg <- const_summary %>%
+              slice_max(order_by=avg_fit, n=1, with_ties=TRUE)
+
+best_U_avg
+best_U_x_log <- log10(best_U_avg$U[1])
+best_U_x_lin <- best_U_avg$U[1]
+
 # Evolving mutation stats summary
 evo_long <- compile_all(files_evolve)
 evo_wide <- evo_long %>%
@@ -105,13 +113,20 @@ p <- ggplot() +
         aes(x=log10(U), y=log10(avg_fit)),
         linewidth=1
      ) +
+     # best constant U vertical line
+     geom_vline(
+         xintercept = best_U_x_log,
+         linetype="dashed",
+         linewidth=0.8
+     ) +
      # evolving-mutation run vertical error bars (fitness sem)
      geom_errorbar(
         data=evo_summary,
         aes(
             x=log10(avg_endU), 
             ymin=log10(avg_fit - sem_fit),
-            ymax=log10(avg_fit + sem_fit)
+            ymax=log10(avg_fit + sem_fit),
+            color=factor(startU)
         )
      ) +
      # evolving-mutation run horizontal error bars (mutation sem)
@@ -120,21 +135,22 @@ p <- ggplot() +
         aes(
             y=log10(avg_fit),
             xmin=log10(avg_endU - sem_endU),
-            xmax=log10(avg_endU + sem_endU)
+            xmax=log10(avg_endU + sem_endU),
+            color=factor(startU)
         )
      ) +
      geom_point(
         data=evo_summary,
-        aes(x=log10(avg_endU), y=log10(avg_fit)),
+        aes(x=log10(avg_endU), y=log10(avg_fit), color=factor(startU)),
         size=3
      ) +
      # labels for evolve points
-     geom_text(
-        data=evo_summary,
-        aes(x=log10(avg_endU), y=log10(avg_fit),
-            label=paste0("start=", format(startU, scientific=TRUE))),
-            size=3, vjust=-1
-     ) +
+   #   geom_text(
+   #      data=evo_summary,
+   #      aes(x=log10(avg_endU), y=log10(avg_fit), color=factor(startU),
+   #          label=paste0("start=", format(startU, scientific=TRUE))),
+   #          size=2, vjust=-1
+   #   ) +
      labs(
         x="log10(Mutation Rate)",
         y="log10(Fitness)"
@@ -142,7 +158,7 @@ p <- ggplot() +
      theme_bw()
 
     
-    ggsave("fig1_loglog.pdf", p, width=7, height=5)
+    ggsave("fig1_loglog_diag.pdf", p, width=7, height=5)
 
 
 p2 <- ggplot() +
@@ -156,13 +172,20 @@ p2 <- ggplot() +
         aes(x=(U), y=(avg_fit)),
         linewidth=1
      ) +
+     # best constant U vertical line
+     geom_vline(
+         xintercept = best_U_x_lin,
+         linetype="dashed",
+         linewidth=0.8
+     ) +
      # evolving-mutation run vertical error bars (fitness sem)
      geom_errorbar(
         data=evo_summary,
         aes(
             x=(avg_endU), 
             ymin=(avg_fit - sem_fit),
-            ymax=(avg_fit + sem_fit)
+            ymax=(avg_fit + sem_fit),
+            color=factor(startU)
         )
      ) +
      # evolving-mutation run horizontal error bars (mutation sem)
@@ -171,21 +194,22 @@ p2 <- ggplot() +
         aes(
             y=(avg_fit),
             xmin=(avg_endU - sem_endU),
-            xmax=(avg_endU + sem_endU)
+            xmax=(avg_endU + sem_endU),
+            color=factor(startU)
         )
      ) +
      geom_point(
         data=evo_summary,
-        aes(x=(avg_endU), y=(avg_fit)),
+        aes(x=(avg_endU), y=(avg_fit), color=factor(startU)),
         size=3
      ) +
      # labels for evolve points
-     geom_text(
-        data=evo_summary,
-        aes(x=(avg_endU), y=(avg_fit),
-            label=paste0("start=", format(startU, scientific=TRUE))),
-            size=3, vjust=-1
-     ) +
+   #   geom_text(
+   #      data=evo_summary,
+   #      aes(x=(avg_endU), y=(avg_fit), color=factor(startU),
+   #          label=paste0("start=", format(startU, scientific=TRUE))),
+   #          size=2, vjust=-1
+   #   ) +
      labs(
         x="(Mutation Rate)",
         y="(Fitness)"
@@ -193,4 +217,4 @@ p2 <- ggplot() +
      theme_bw()
 
     
-    ggsave("fig1_linear.pdf", p2, width=7, height=5)
+    ggsave("fig1_linear_diag.pdf", p2, width=7, height=5)
