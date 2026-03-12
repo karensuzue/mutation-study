@@ -7,7 +7,7 @@ library(tidyr)
 library(ggplot2)
 library(stringr)
 
-root_evolve <- "./fig1-evolve-diag/"
+root_evolve <- "./fig1-evolve-diag2/"
 root_const <- "./fig1-const-diag/"
 best_const_U <- 10
 
@@ -27,9 +27,9 @@ read_mut_file <- function(file) {
     if (is.null(meta)) {
         stop(paste("Filename didn't match expected pattern:", basename(file)))
     }
-    df <- read_csv(file, show_col_types=FALSE)
-    df <- df %>% select(-Best_mu, -Mean_mu, -Highest_ID)
-    df <- df %>% mutate(Start_U = meta$U)
+    df <- read_csv(file, show_col_types=FALSE) %>%
+          select(-Best_mu, -Mean_mu, -Highest_ID) %>%
+          mutate(Start_U = meta$U)
     return(df)
 }
 
@@ -38,19 +38,16 @@ read_fit_file <- function(file) {
     if (is.null(meta)) {
         stop(paste("Filename didn't match expected pattern:", basename(file)))
     }
-    df <- read_csv(file, show_col_types=FALSE)
-    df <- df %>% select(-Fittest_ID)
-    df <- df %>% mutate(Start_U = meta$U)
+    df <- read_csv(file, show_col_types=FALSE) %>%
+          select(-Fittest_ID) %>% 
+          mutate(Start_U = meta$U)
     return(df)
 }
 
 # Grab all history files we need
 files_mut <- dir_ls(root_evolve, recurse=TRUE, regexp="history_.*_mutation\\.csv$")
-# files_mut
 files_fit <- dir_ls(root_evolve, recurse=TRUE, regexp="history_.*_fitness\\.csv$")
-# files_fit
 files_best_U_fit <- dir_ls(root_const, recurse=TRUE, regexp="history_1.0000e\\+01_.*_fitness\\.csv$")
-# files_best_U_fit
 
 # --- DATAFRAMES FROM EVOLVING RUNS ---
 all_mut_df <- list()
@@ -84,6 +81,15 @@ avg_fit_df <- all_fit_df %>%
                 .groups="drop"
               )
 # avg_fit_df
+
+median_mut_df <- all_mut_df %>%
+                 group_by(Start_U, Generation) %>%
+                 summarize(
+                    Median_Mean_U = median(Mean_U, na.rm=TRUE),
+                    Q1_Mean_U = quantile(Mean_U, 0.25, na.rm=TRUE),
+                    Q3_Mean_U = quantile(Mean_U, 0.75, na.rm=TRUE),
+                    .groups="drop"
+                )
 
 # --- DATAFRAMES FROM CONSTANT RUN WITH BEST U ---
 all_best_U_fit_df <- list()
@@ -132,7 +138,7 @@ p_fit_linear <- ggplot(avg_fit_df, aes(x=Generation, y=Avg_Mean_F, color=factor(
                         ymax=Avg_Mean_F + SD_Mean_F,
                         group=Start_U,
                         fill=factor(Start_U)),
-                    inherit.aes=TRUE,
+                    # inherit.aes=TRUE,
                     alpha=0.15,
                     color=NA
                 ) +
@@ -168,7 +174,7 @@ p_mut_linear <- ggplot(avg_mut_df, aes(x=Generation, y=Avg_Mean_U, color=factor(
                         ymax=Avg_Mean_U + SD_Mean_U,
                         group=Start_U,
                         fill=factor(Start_U)),
-                    inherit.aes=TRUE,
+                    # inherit.aes=TRUE,
                     alpha=0.15,
                     color=NA
                 ) +
@@ -188,7 +194,7 @@ p_fit_logy <- ggplot(avg_fit_log, aes(x=Generation, y=y, color=factor(Start_U), 
                         ymax=ymax,
                         group=Start_U,
                         fill=factor(Start_U)),
-                    inherit.aes=TRUE,
+                    # inherit.aes=TRUE,
                     alpha=0.15,
                     color=NA
                 ) +
@@ -224,7 +230,7 @@ p_mut_logy <- ggplot(avg_mut_log, aes(x=Generation, y=y, color=factor(Start_U), 
                         ymax=ymax,
                         group=Start_U,
                         fill=factor(Start_U)),
-                    inherit.aes=TRUE,
+                    # inherit.aes=TRUE,
                     alpha=0.15,
                     color=NA
                 ) +
@@ -238,7 +244,25 @@ p_mut_logy <- ggplot(avg_mut_log, aes(x=Generation, y=y, color=factor(Start_U), 
                 ) +
                 theme_bw()
 
+p_mut_median_logy <- ggplot(median_mut_df, aes(x=Generation, y=Median_Mean_U, color=factor(Start_U), group=Start_U)) +
+                       geom_ribbon(
+                            aes(ymin=Q1_Mean_U, 
+                                ymax=Q3_Mean_U,
+                                group=Start_U,
+                                fill=factor(Start_U)), 
+                            alpha=0.15,
+                            color=NA
+                       ) +
+                       geom_line(linewidth=0.8) +
+                       geom_hline(yintercept=best_const_U, linetype="dashed", linewidth=0.8, color="black") +
+                       scale_y_log10() +
+                       labs(
+                            x="Generation",
+                            y="Median U (across replicates)",
+                            color="Start_U"
+                       )
 ggsave("fig2_fit_linear_diag.pdf", p_fit_linear, width=7, height=5)
 ggsave("fig2_fit_logy_diag.pdf", p_fit_logy, width=7, height=5)
 ggsave("fig2_mut_linear_diag.pdf", p_mut_linear, width=7, height=5)
 ggsave("fig2_mut_logy_diag.pdf", p_mut_logy, width=7, height=5)
+ggsave("fig2_mut_median_logy_diag.pdf", p_mut_median_logy, width=7, height=5)
