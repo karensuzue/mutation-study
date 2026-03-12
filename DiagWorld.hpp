@@ -49,7 +49,7 @@ private:
 
     size_t genome_size = 100;
     // size_t genome_size = 10;
-    size_t max_generations = 100000;
+    size_t max_generations = 50000;
     // size_t max_generations = 1000;
     size_t max_replicates = 20;
     size_t pop_size = 3600;
