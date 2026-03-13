@@ -293,6 +293,7 @@ public:
             emp::Random random(replicate + 1);
             Run(random);
             ExportHistory("history_" + prefix + "_" + std::to_string(replicate));
+            std::cout << "Replicate " << replicate << " completed!";
         }
     }
 

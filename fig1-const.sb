@@ -1,0 +1,30 @@
+#!/bin/bash --login
+########## Define Resources Needed with SBATCH Lines ##########
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --array=1-3
+#SBATCH --cpus-per-task=1
+#SBATCH -t 02:30:00
+#SBATCH --mem=10GB
+#SBATCH --job-name=fig1
+#SBATCH -p defq
+###############################################################
+
+module purge
+module load GCC/13.3.0
+
+U_RATES=( 13.895 37.276 100 )
+
+ID=$(( SLURM_ARRAY_TASK_ID - 1 ))
+U_RATE=${U_RATES[$ID]}
+
+./Mutation-Study \
+    --start_U ${U_RATE} \
+    --const_mut 1 \
+    --valley_cross 1 \
+    --rand_phenotype 0 \
+    --gens 50000 \
+    --reps 20 \
+    --pop_size 3600 \
+    --genome_size 100
+

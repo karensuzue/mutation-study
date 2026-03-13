@@ -7,8 +7,8 @@ library(tidyr)
 library(ggplot2)
 library(stringr)
 
-root_evolve <- "./fig1-evolve-diag2/"
-root_const <- "./fig1-const-diag/"
+root_evolve <- "./Data/evolve-diag/"
+root_const <- "./Data/const-diag2/"
 best_const_U <- 10
 
 # Function to parse U (genome-wide mutation rate), rep, kind from filename
