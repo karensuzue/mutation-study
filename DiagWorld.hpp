@@ -63,6 +63,9 @@ private:
     std::string translate_name = "ExploitationRate";
     bool valley_crossing = true; // toggles sawtooth transformation
 
+    // TODO: Still need to make this take effect
+    bool rand_phenotype = false; // turns on stochastic phenotype expression
+
     size_t tour_size = 3;
 
     size_t generation = 0; // current generation
@@ -110,16 +113,30 @@ public:
         return organisms[index];
     }
 
+    size_t GetGenerations() const { return max_generations; }
+    void SetGenerations(size_t g) { max_generations = g; }
+
+    size_t GetReplicates() const { return max_replicates; }
+    void SetReplicates(size_t r) { max_replicates = r; }
+
     size_t GetPopSize() const { return pop_size; }
+    void SetPopSize(size_t ps) { pop_size = ps; }
+
     size_t GetGenomeSize() const { return genome_size; }
+    void SetGenomeSize(size_t gs) { genome_size = gs; }
 
     void SetInitMutation(double mu) { init_mut_rate = mu; }
     double GetInitMutation() const { return init_mut_rate; }
-    void ToggleConstantMutation() { const_mutation_rate = !const_mutation_rate; }
-    bool IsConstantMutation() { return const_mutation_rate; }
+    // void ToggleConstantMutation() { const_mutation_rate = !const_mutation_rate; }
+    void SetConstantMutation(bool cs) { const_mutation_rate = cs; }
+    bool IsConstantMutation() const { return const_mutation_rate; }
 
-    void ToggleValleyCrossing() { valley_crossing = !valley_crossing; }
-    bool IsValleyCrossing() { return valley_crossing; }
+    // void ToggleValleyCrossing() { valley_crossing = !valley_crossing; }
+    void SetValleyCrossing(bool vc) { valley_crossing = vc; }
+    bool IsValleyCrossing() const { return valley_crossing; }
+
+    void SetStochasticPhenotype(bool sp) { rand_phenotype = sp; }
+    bool IsStochasticPhenotype() const { return rand_phenotype; }
 
     friend std::ostream & operator<<(std::ostream & os, const DiagWorld & pop) {
         assert(pop.pop_size == pop.organisms.size() && 
@@ -272,7 +289,7 @@ public:
         if (num_replicates == 0) num_replicates = max_replicates;
         for (size_t replicate = 0; replicate < num_replicates; ++replicate) {
             history.clear();
-            history.reserve(max_generations);
+            history.reserve(max_generations + 1);
             emp::Random random(replicate + 1);
             Run(random);
             ExportHistory("history_" + prefix + "_" + std::to_string(replicate));
@@ -285,11 +302,11 @@ public:
         double avg_f = 0.0;
         // double median_f = 0.0;
         double best_f = organisms[0].GetFitness();
-        int best_id = 0;
+        size_t best_id = 0;
 
         double avg_mut = 0.0;
         double highest_mut = organisms[0].GetMutationRate();
-        int highest_mut_id = 0; // they start out the same
+        size_t highest_mut_id = 0; // they start out the same
 
         assert(pop_size == organisms.size() && 
                "pop_size does not match pop.organisms.size().");
@@ -312,7 +329,7 @@ public:
         }
         avg_f /= pop_size;
         avg_mut /= pop_size;
-        assert(best_id > -1 && "Best ID could not be logged.");
+        // assert(best_id > -1 && "Best ID could not be logged.");
 
         history.emplace_back(gen, avg_f, best_f, best_id, avg_mut, highest_mut, highest_mut_id);
     }

@@ -1,102 +1,165 @@
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
 
-#include "emp/base/vector.hpp"
-
 #include "DiagWorld.hpp"
 
-// TODO: SettingsManager! Config files! 
-int main(/*int argc, char * argv[]*/) { 
-    // ---- DEBUG ----
-    // emp::Random rand{11};
-    // DiagWorld pop;
-    // if (!pop.IsConstantMutation()) pop.ToggleConstantMutation();
-    // pop.SetInitMutation(0.5);
-    // pop.Run(rand);
-    // std::cout << pop << std::endl;
+struct RunConfig {
+    double start_U = 1e-3; // GENOME-WIDE mutation rate
+    bool const_mut = true;
+    bool valley_cross = true;
+    bool rand_phenotype = false;
+    size_t gens = 1000;
+    size_t reps = 1;
+    size_t pop_size = 100;
+    size_t genome_size = 10;
+};
 
 
-    // ---- EXPERIMENT 1: CONSTANT MUTATION ----
-    // U = mutations per genome per generation (genome-wide rate)
-    // const emp::vector<double> U_rates = {
-    //     1.0e-5,
-    //     2.6827e-5,
-    //     7.1969e-5,
-    //     1.9307e-4,
-    //     5.1795e-4,
-    //     1.3895e-3,
-    //     3.7276e-3,
-    //     1.0e-2,
-    //     2.6827e-2,
-    //     7.1969e-2,
-    //     1.9307e-1,
-    //     5.1795e-1,
-    //     1.3895,
-    //     3.7276,
-    //     10.0
-    // };
+void PrintUsage() {
+    std::cout << "Options:\n"
+        << "  --start_U <double>        Starting genome-wide mutation rate\n"
+        << "  --const_mut <0|1>         1 = constant mutation, 0 = evolving mutation\n"
+        << "  --valley_cross <0|1>      1 = apply sawtooth transformation, 0 = don't apply\n"
+        << "  --rand_phenotype <0|1>    1 = stochastic phenotype, 0 = non-stochastic phenotype\n"
+        << "  --gens <size_t>           Number of generations\n"
+        << "  --reps <size_t>           Number of replicates\n"
+        << "  --pop_size <size_t>       Population size\n"
+        << "  --genome_size <size_t>    Number of genes per organism\n"
+        << "  --help                    Show this message\n";
+}
 
-    // New rates for diagnostics experiment (shifted up)
-    const emp::vector<double> U_rates = {
-        1.0e-4,
-        2.6827e-4,
-        7.1969e-4,
-        1.9307e-3,
-        5.1795e-3,
-        1.3895e-2,
-        3.7276e-2,
-        1.0e-1,
-        2.6827e-1,
-        7.1969e-1,
-        1.9307,
-        5.1795,
-        1.3895e1,
-        3.7276e1,
-        1.0e2
-    };
 
-    for (double  U : U_rates) {
-        DiagWorld pop;
+RunConfig ParseArgs(int argc, char * argv[]) {
+    RunConfig cfg;
 
-        // Ensure contant mutation-rate inheritance
-        if (!pop.IsConstantMutation()) pop.ToggleConstantMutation();
+    for (int i = 1; i < argc; ++i) {
+        emp::String arg = argv[i];
 
-        // Convert genome-wide U to per-site mu
-        const double mu = U / static_cast<double>(pop.GetGenomeSize());
-        pop.SetInitMutation(mu);
+        // Checks for a value after flag
+        auto require_value = [&](const std::string & name) {
+            if (i + 1 >= argc) { 
+                emp::notify::Error("Missing value for ", name, "."); 
+                std::exit(EXIT_FAILURE);
+            }
+            emp::String next = argv[i + 1];
+            if (next[0] == '-') { 
+                emp::notify::Error("Missing value for ", name, ", got option '", next, "' instead."); 
+                std::exit(EXIT_FAILURE);
+            }
+        };
 
-        // Formatting
-        std::ostringstream oss;
-        oss << std::scientific << std::setprecision(4) << U;
-        const std::string tag = oss.str();
-
-        std::cout << "Running U=" << tag << " (mu=" 
-            << std::scientific << std::setprecision(4) << mu << ")\n";
-        pop.MultiRun(tag);
+        if (arg == "--help") {
+            PrintUsage();
+            std::exit(EXIT_SUCCESS);
+        }
+        else if (arg == "--start_U") {
+            require_value(arg);
+            cfg.start_U = std::stod(argv[++i]);
+        }
+        else if (arg == "--const_mut") {
+            require_value(arg);
+            int val = std::stoi(argv[++i]);
+            if (val != 0 && val != 1) {
+                emp::notify::Error("--const_mut must be 0 or 1.");
+                std::exit(EXIT_FAILURE);
+            }
+            cfg.const_mut = static_cast<bool>(val);
+        }
+        else if (arg == "--valley_cross") {
+            require_value(arg);
+            int val = std::stoi(argv[++i]);
+            if (val != 0 && val != 1) {
+                emp::notify::Error("--valley_cross must be 0 or 1.");
+                std::exit(EXIT_FAILURE);
+            }
+            cfg.valley_cross = static_cast<bool>(val);
+        }
+        else if (arg == "--rand_phenotype") {
+            require_value(arg);
+            int val = std::stoi(argv[++i]);
+            if (val != 0 && val != 1) {
+                emp::notify::Error("--rand_phenotype must be 0 or 1.");
+                std::exit(EXIT_FAILURE);
+            }
+            cfg.rand_phenotype = static_cast<bool>(val);
+        }
+        else if (arg == "--gens") {
+            require_value(arg);
+            auto val = std::stoull(argv[++i]);
+            if (val <= 0) {
+                emp::notify::Error("--gens must be positive.");
+                std::exit(EXIT_FAILURE);
+            }
+            cfg.gens = static_cast<size_t>(val);
+        }
+        else if (arg == "--reps") {
+            require_value(arg);
+            auto val = std::stoull(argv[++i]);
+            if (val <= 0) {
+                emp::notify::Error("--reps must be positive.");
+                std::exit(EXIT_FAILURE);
+            }
+            cfg.reps = static_cast<size_t>(val);
+        }
+        else if (arg == "--pop_size") {
+            require_value(arg);
+            auto val = std::stoull(argv[++i]);
+            if (val <= 0) {
+                emp::notify::Error("--pop_size must be positive.");
+                std::exit(EXIT_FAILURE);
+            }
+            cfg.pop_size = static_cast<size_t>(val);
+        }
+        else if (arg == "--genome_size") {
+            require_value(arg);
+            auto val = std::stoull(argv[++i]);
+            if (val <= 0) {
+                emp::notify::Error("--genome_size must be positive.");
+                std::exit(EXIT_FAILURE);
+            }
+            cfg.genome_size = static_cast<size_t>(val);
+        }
+        else {
+            emp::notify::Error("Unknown argument: ", arg);
+            std::exit(EXIT_FAILURE);
+        }
     }
+    return cfg;
+}
 
-    // ---- EXPERIMENT 2: Evolving mutation rate in a static environment ----
-    // Starting rates below and above "optimal" (U=10)
-    // const emp::vector<double> evolve_U_rates = {1e-3, 1e-2, 50, 100};    
-    // for (double  U : evolve_U_rates) {
-    //     DiagWorld pop;
+int main(int argc, char * argv[]) { 
+    RunConfig cfg = ParseArgs(argc, argv);
 
-    //     // Mutation rates can now evolve
-    //     if (pop.IsConstantMutation()) pop.ToggleConstantMutation();
+    std::cout << "start_U = " << cfg.start_U << "\n";
+    std::cout << "const_mut = " << cfg.const_mut << "\n";
+    std::cout << "valley_cross = " << cfg.valley_cross << "\n";
+    std::cout << "rand_phenotype = " << cfg.rand_phenotype << "\n";
+    std::cout << "gens = " << cfg.gens << "\n";
+    std::cout << "reps = " << cfg.reps << "\n";
+    std::cout << "pop_size = " << cfg.pop_size << "\n";
+    std::cout << "genome_size = " << cfg.genome_size << "\n";
+    
+    DiagWorld pop;
+    
+    pop.SetConstantMutation(cfg.const_mut);
+    pop.SetValleyCrossing(cfg.valley_cross);
+    pop.SetStochasticPhenotype(cfg.rand_phenotype);
+    pop.SetGenerations(cfg.gens);
+    pop.SetReplicates(cfg.reps);
+    pop.SetPopSize(cfg.pop_size);
+    pop.SetGenomeSize(cfg.genome_size);
 
-    //     // Convert genome-wide U to per-site mu
-    //     const double mu = U / static_cast<double>(pop.GetGenomeSize());
-    //     pop.SetInitMutation(mu);
+    const double mu = cfg.start_U / static_cast<double>(cfg.genome_size);
+    pop.SetInitMutation(mu);
 
-    //     // Formatting
-    //     std::ostringstream oss;
-    //     oss << std::scientific << std::setprecision(4) << U;
-    //     const std::string tag = oss.str();
+    // Formatting
+    std::ostringstream oss;
+    oss << std::scientific << std::setprecision(4) << cfg.start_U;
+    const std::string tag = oss.str();
 
-    //     std::cout << "Running U=" << tag << " (mu=" 
-    //         << std::scientific << std::setprecision(4) << mu << ")\n";
-    //     pop.MultiRun(tag);
-    // }
-
+    std::cout << "Running U=" << tag << " (mu=" 
+            << std::scientific << std::setprecision(4) << mu << ")\n";
+    pop.MultiRun(tag);
 }
