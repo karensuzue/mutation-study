@@ -6,12 +6,13 @@
 #include "DiagWorld.hpp"
 
 struct RunConfig {
+    size_t seed = 1;
     double start_U = 1e-3; // GENOME-WIDE mutation rate
     bool const_mut = true;
     bool valley_cross = true;
     bool rand_phenotype = false;
     size_t gens = 1000;
-    size_t reps = 1;
+    // size_t reps = 1;
     size_t pop_size = 100;
     size_t genome_size = 10;
 };
@@ -19,12 +20,13 @@ struct RunConfig {
 
 void PrintUsage() {
     std::cout << "Options:\n"
+        << "  --seed <size_t>           Seed\n"
         << "  --start_U <double>        Starting genome-wide mutation rate\n"
         << "  --const_mut <0|1>         1 = constant mutation, 0 = evolving mutation\n"
         << "  --valley_cross <0|1>      1 = apply sawtooth transformation, 0 = don't apply\n"
         << "  --rand_phenotype <0|1>    1 = stochastic phenotype, 0 = non-stochastic phenotype\n"
         << "  --gens <size_t>           Number of generations\n"
-        << "  --reps <size_t>           Number of replicates\n"
+        // << "  --reps <size_t>           Number of replicates\n"
         << "  --pop_size <size_t>       Population size\n"
         << "  --genome_size <size_t>    Number of genes per organism\n"
         << "  --help                    Show this message\n";
@@ -53,6 +55,11 @@ RunConfig ParseArgs(int argc, char * argv[]) {
         if (arg == "--help") {
             PrintUsage();
             std::exit(EXIT_SUCCESS);
+        }
+        else if (arg == "--seed") {
+            require_value(arg);
+            auto val = std::stoull(argv[++i]);
+            cfg.seed = static_cast<size_t>(val);
         }
         else if (arg == "--start_U") {
             require_value(arg);
@@ -94,15 +101,15 @@ RunConfig ParseArgs(int argc, char * argv[]) {
             }
             cfg.gens = static_cast<size_t>(val);
         }
-        else if (arg == "--reps") {
-            require_value(arg);
-            auto val = std::stoull(argv[++i]);
-            if (val <= 0) {
-                emp::notify::Error("--reps must be positive.");
-                std::exit(EXIT_FAILURE);
-            }
-            cfg.reps = static_cast<size_t>(val);
-        }
+        // else if (arg == "--reps") {
+        //     require_value(arg);
+        //     auto val = std::stoull(argv[++i]);
+        //     if (val <= 0) {
+        //         emp::notify::Error("--reps must be positive.");
+        //         std::exit(EXIT_FAILURE);
+        //     }
+        //     cfg.reps = static_cast<size_t>(val);
+        // }
         else if (arg == "--pop_size") {
             require_value(arg);
             auto val = std::stoull(argv[++i]);
@@ -132,12 +139,13 @@ RunConfig ParseArgs(int argc, char * argv[]) {
 int main(int argc, char * argv[]) { 
     RunConfig cfg = ParseArgs(argc, argv);
 
+    std::cout << "seed = " << cfg.seed << "\n";
     std::cout << "start_U = " << cfg.start_U << "\n";
     std::cout << "const_mut = " << cfg.const_mut << "\n";
     std::cout << "valley_cross = " << cfg.valley_cross << "\n";
     std::cout << "rand_phenotype = " << cfg.rand_phenotype << "\n";
     std::cout << "gens = " << cfg.gens << "\n";
-    std::cout << "reps = " << cfg.reps << "\n";
+    // std::cout << "reps = " << cfg.reps << "\n";
     std::cout << "pop_size = " << cfg.pop_size << "\n";
     std::cout << "genome_size = " << cfg.genome_size << "\n";
     
@@ -147,7 +155,7 @@ int main(int argc, char * argv[]) {
     pop.SetValleyCrossing(cfg.valley_cross);
     pop.SetStochasticPhenotype(cfg.rand_phenotype);
     pop.SetGenerations(cfg.gens);
-    pop.SetReplicates(cfg.reps);
+    // pop.SetReplicates(cfg.reps);
     pop.SetPopSize(cfg.pop_size);
     pop.SetGenomeSize(cfg.genome_size);
 
@@ -161,5 +169,9 @@ int main(int argc, char * argv[]) {
 
     std::cout << "Running U=" << tag << " (mu=" 
             << std::scientific << std::setprecision(4) << mu << ")\n";
-    pop.MultiRun(tag);
+
+    // pop.MultiRun(tag);
+    emp::Random random(cfg.seed);
+    pop.Run(random);
+    pop.ExportHistory("history_" + tag + "_" + std::to_string(cfg.seed));
 }

@@ -2,7 +2,7 @@
 ########## Define Resources Needed with SBATCH Lines ##########
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --array=1-3
+#SBATCH --array=0-59
 #SBATCH --cpus-per-task=1
 #SBATCH -t 02:30:00
 #SBATCH --mem=10GB
@@ -13,22 +13,51 @@
 module purge
 module load GCC/13.3.0
 
-U_RATES=( 13.895 37.276 100 )
-
-if [ -z "${SLURM_ARRAY_TASK_ID}" ]; then
-    SLURM_ARRAY_TASK_ID=1
+# For local testing, default to first array entry :)
+if [ -z "${SLURM_ARRAY_TASK_ID}" ]; then 
+    SLURM_ARRAY_TASK_ID=0
 fi
 
-ID=$(( SLURM_ARRAY_TASK_ID - 1 ))
-U_RATE=${U_RATES[$ID]}
+U_RATES=(13.895 37.276 100)
+
+NUM_U=${#U_RATES[@]}
+NUM_REPS=20
+TOTAL_JOBS=$(( NUM_U * NUM_REPS ))
+
+# Safety check
+if [ "${SLURM_ARRAY_TASK_ID}" -lt 0 ] || [ "${SLURM_ARRAY_TASK_ID}" -ge "${TOTAL_JOBS}" ]; then
+    echo "SLURM_ARRAY_TASK_ID=${SLURM_ARRAY_TASK_ID} is out of range [0, $((TOTAL_JOBS - 1))]"
+    exit 1
+fi
+
+U_INDEX=$(( SLURM_ARRAY_TASK_ID / NUM_REPS ))
+REP_INDEX=$(( SLURM_ARRAY_TASK_ID % NUM_REPS ))
+
+U_RATE=${U_RATES[$U_INDEX]}
+SEED=$(( REP_INDEX + 1 ))
+
+echo "SLURM_ARRAY_TASK_ID=${SLURM_ARRAY_TASK_ID}"
+echo "U_INDEX=${U_INDEX}"
+echo "REP_INDEX=${REP_INDEX}"
+echo "U_RATE=${U_RATE}"
+echo "SEED=${SEED}"
 
 ./Mutation-Study \
-    --start_U ${U_RATE} \
+    --seed "${SEED}" \
+    --start_U "${U_RATE}" \
     --const_mut 1 \
     --valley_cross 1 \
     --rand_phenotype 0 \
     --gens 50000 \
-    --reps 20 \
     --pop_size 3600 \
     --genome_size 100
 
+
+status=$?
+
+if [ "$status" -eq 0 ]; then
+    echo "Finished successfully: task=${SLURM_ARRAY_TASK_ID}, U=${U_RATE}, seed=${SEED}"
+else
+    echo "Run failed: task=${SLURM_ARRAY_TASK_ID}, U=${U_RATE}, seed=${SEED}, exit_code=${status}"
+    exit "$status"
+fi

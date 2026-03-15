@@ -270,6 +270,8 @@ public:
     }
 
     void Run(emp::Random & random) {
+        history.clear();
+        history.reserve(max_generations + 1);
         InitializeUniform(random);
         // InitializeUniform();
         SetPopulationMutation(init_mut_rate);
@@ -288,8 +290,6 @@ public:
     void MultiRun(const std::string & prefix, size_t num_replicates = 0) {
         if (num_replicates == 0) num_replicates = max_replicates;
         for (size_t replicate = 0; replicate < num_replicates; ++replicate) {
-            history.clear();
-            history.reserve(max_generations + 1);
             emp::Random random(replicate + 1);
             Run(random);
             ExportHistory("history_" + prefix + "_" + std::to_string(replicate));
