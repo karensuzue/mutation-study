@@ -15,6 +15,10 @@ module load GCC/13.3.0
 
 U_RATES=( 13.895 37.276 100 )
 
+if [ -z "${SLURM_ARRAY_TASK_ID}" ]; then
+    SLURM_ARRAY_TASK_ID=1
+fi
+
 ID=$(( SLURM_ARRAY_TASK_ID - 1 ))
 U_RATE=${U_RATES[$ID]}
 
