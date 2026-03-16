@@ -9,7 +9,7 @@ library(tidyr)
 library(ggplot2)
 library(stringr)
 
-root_const <- "./Data/const-diag-combined/"
+root_const <- "./Data/const-diag-final/"
 root_evolve <- "./Data/evolve-diag/"
 
 # Function to grab the last row of a file
