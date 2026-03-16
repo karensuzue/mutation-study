@@ -9,7 +9,7 @@ library(tidyr)
 library(ggplot2)
 library(stringr)
 
-root_const <- "./Data/const-diag2/"
+root_const <- "./Data/const-diag-combined/"
 root_evolve <- "./Data/evolve-diag/"
 
 # Function to grab the last row of a file
@@ -73,13 +73,16 @@ const_summary <- const_wide %>%
                     sem_fit=sd(fitness) / sqrt(n()) # n() is # of replicates, SEM gets smaller as you have more reps
                  ) %>%
                  arrange(U) # sort rows by increasing U
-const_summary
+# const_summary
+write_csv(const_summary, "const_summary.csv")
 
 
 best_U_avg <- const_summary %>%
               slice_max(order_by=avg_fit, n=1, with_ties=TRUE)
 
 best_U_avg
+
+# These are numbers!!
 best_U_x_log <- log10(best_U_avg$U[1])
 best_U_x_lin <- best_U_avg$U[1]
 
@@ -100,7 +103,7 @@ evo_summary <- evo_wide %>%
                     sem_endU=sd(endU) / sqrt(n())
                ) %>%
                arrange(startU)
-evo_summary
+# evo_summary
 
 p <- ggplot() +
      geom_point(
@@ -143,6 +146,14 @@ p <- ggplot() +
         data=evo_summary,
         aes(x=log10(avg_endU), y=log10(avg_fit), color=factor(startU)),
         size=3
+     ) +
+     annotate(
+         "text",
+         x=best_U_x_log, # horizontal pos of text
+         y=min(log10(const_wide$fitness), na.rm=TRUE), # vertical pos
+         label=paste0("best=", signif(best_U_x_lin, 3)), # show raw/non-log U
+         vjust=1.5,
+         size=3
      ) +
      # labels for evolve points
    #   geom_text(
@@ -202,6 +213,14 @@ p2 <- ggplot() +
         data=evo_summary,
         aes(x=(avg_endU), y=(avg_fit), color=factor(startU)),
         size=3
+     ) +
+      annotate(
+         "text",
+         x=best_U_x_lin, # horizontal pos of text
+         y=min(const_wide$fitness, na.rm=TRUE), # vertical pos
+         label=paste0("best=", signif(best_U_x_lin, 3)), # show raw/non-log U
+         vjust=1.5,
+         size=3
      ) +
      # labels for evolve points
    #   geom_text(

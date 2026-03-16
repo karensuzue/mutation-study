@@ -4,7 +4,7 @@ def check_slurm_outputs(directory, job_id, max_id):
     missing_files = []
     incomplete_files = []
 
-    for i in range(1, max_id + 1):
+    for i in range(0, max_id + 1):
         filename = f"slurm-{job_id}_{i}.out"
         filepath = os.path.join(directory, filename)
 
