@@ -2,7 +2,7 @@
 ########## Define Resources Needed with SBATCH Lines ##########
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --array=0-99
+#SBATCH --array=0-139
 #SBATCH --cpus-per-task=1
 #SBATCH -t 02:30:00
 #SBATCH --mem=10GB
@@ -20,7 +20,7 @@ fi
 
 ID=$(( SLURM_ARRAY_TASK_ID ))
 
-# 5 * 20 = 100 jobs
+# 7 * 20 = 140 jobs
 U_RATES=(
     1.0000e-4
     1.0000e-2
@@ -54,10 +54,11 @@ echo "REP_INDEX=${REP_INDEX}"
 echo "U_RATE=${U_RATE}"
 echo "SEED=${SEED}"
 
+# TURN OFF CONSTANT MUTATION RATE
 ./Mutation-Study \
     --seed "${SEED}" \
     --start_U "${U_RATE}" \
-    --const_mut 0 \               # TURN OFF CONSTANT MUTATION RATE
+    --const_mut 0 \               
     --valley_cross 1 \
     --rand_phenotype 0 \
     --gens 50000 \
