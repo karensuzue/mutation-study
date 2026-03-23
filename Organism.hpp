@@ -16,10 +16,6 @@
 #include "emp/base/vector.hpp"
 #include "emp/math/Random.hpp"
 
-// Gene bounds from Hernandez et al. suite
-static constexpr double GENE_MIN = 0.0;
-static constexpr double GENE_MAX = 100.0;
-
 // Minimum and maximum mutation rates (per gene)
 static constexpr double MUT_MIN = 1e-12; // if 0 can't be shifted
 static constexpr double MUT_MAX = 1.0;
@@ -27,7 +23,7 @@ static constexpr double MUT_MAX = 1.0;
 // Reflect a value back into [lo, hi] by "rebounding" off the walls.
 // Also corrects cases where mutations overshoot by more than one interval width.
 // For example: -0.7 -> 0.7, 100.7 -> 99.3
-double ReflectIntoRange(double value, double lo=GENE_MIN, double hi=GENE_MAX) {
+double ReflectIntoRange(double value, double lo, double hi) {
     assert(lo < hi && "Lower boundary must be less than the upper boundary!");
     const double width = hi - lo;
     double shifted_value = value - lo; // shift to [0, width]
@@ -37,39 +33,46 @@ double ReflectIntoRange(double value, double lo=GENE_MIN, double hi=GENE_MAX) {
     return lo + shifted_value; // shift back to original range
 }
 
-// TODO: polymorphism with the other Organism class :)
-class DiagOrganism {
-    // using Translator = std::function<void(const emp::vector<double> & /*genome*/,
-    //                                       emp::vector<double> & /*phenotype*/)>;
+class Organism {
     using phenotype_t = emp::vector<double>;
     using genome_t = emp::vector<double>;
 private:
     genome_t genome{};
-    phenotype_t phenotype{};
+    phenotype_t phenotype{}; // we leave this to the 'Evaluate' class 
     double fitness = 0.0; // obtained by aggregating phenotype values 
     double mut_rate = MUT_MIN;
 
-    size_t start = 0; // starting index for fitness calculations
+    double gene_min;
+    double gene_max;
 
 public:
-    DiagOrganism() = default;
-    DiagOrganism(const DiagOrganism &) = default;
+    Organism() = default;
+    Organism(const Organism &) = default;
 
     // We let external functions handle the conversion from genome to phenotype
-    DiagOrganism(const genome_t & init_genome)
-      : genome(init_genome), phenotype(init_genome.size(), 0.0) {}
+    Organism(const genome_t & init_genome, double g_min, double g_max)
+      : genome(init_genome), 
+        phenotype(init_genome.size(), 0.0),
+        gene_min(g_min),
+        gene_max(g_max) {}
    
-    DiagOrganism(size_t genome_size)
-      : genome(genome_size, 0.0), phenotype(genome_size, 0.0) {}
+    Organism(size_t genome_size, double g_min, double g_max)
+      : genome(genome_size, 0.0), 
+        phenotype(genome_size, 0.0),
+        gene_min(g_min),
+        gene_max(g_max) {}
 
-    DiagOrganism(size_t genome_size, emp::Random & random) 
-      : genome(genome_size, 0.0), phenotype(genome_size, 0.0) {
+    Organism(size_t genome_size, emp::Random & random, double g_min, double g_max) 
+      : genome(genome_size, 0.0),
+        phenotype(genome_size, 0.0),
+        gene_min(g_min), 
+        gene_max(g_max) {
         for (double & g : genome) {
-            g = random.GetDouble(GENE_MIN, GENE_MAX);
+            g = random.GetDouble(gene_min, gene_max);
         }
     }
 
-    friend std::ostream & operator<<(std::ostream & os, const DiagOrganism & org) {
+    friend std::ostream & operator<<(std::ostream & os, const Organism & org) {
         os << "Genome="      << org.genome
            << ", Phenotype=" << org.phenotype
            << ", Fitness="   << org.fitness
@@ -93,38 +96,15 @@ public:
     double GetMutationRate() const { return mut_rate; }
     void SetMutationRate(double m) { mut_rate = std::clamp(m, MUT_MIN, MUT_MAX); }
 
-    // // Translate genome into phenotype
-    // void UpdatePhenotype() {
-    //     if (!translator) phenotype = genome;
-    //     else {
-    //         // Let translator handle phenotype and genotype size differences
-    //         translator(genome, phenotype); 
-    //     }
-    // }
-
-    size_t GetStartIndex() const { return start; }
-    void SetStartIndex(size_t s) {
-        assert(s < phenotype.size());
-        start = s;
-    }
-
-    // Aggregate phenotype by summing traits from start index
-    void UpdateFitnessFromPhenotype() {
-        assert(!phenotype.empty());
-        assert(start < phenotype.size());
-        fitness = std::accumulate(phenotype.begin() + start, 
-                                  phenotype.end(), 0.0);
-    }
-
-    // Ensure all genes lie in [0, 100]
+    // Ensure all genes lie in [gene_min, gene_max]
     void RepairGenome() {
-        for (double & g : genome) g = ReflectIntoRange(g, GENE_MIN, GENE_MAX);
+        for (double & g : genome) g = ReflectIntoRange(g, gene_min, gene_max);
     }
 
-    // Point mutations: for each gene, with prob mut_rate add N(0, 1) and rebound into [0,100].
+    // Point mutations: for each gene, with prob mut_rate add N(0, 1) and rebound into [gene_min, gene_max].
     // Mutator mutations (optional): with prob pi, multiply mutation rate by 2^x where x ~ N(mean, sigma^2),
     // mean = b*sigma^2 (bias upward if b>0). Clamp to [MUT_MIN, MUT_MAX].
-    DiagOrganism Mutate(emp::Random & random, 
+    Organism Mutate(emp::Random & random, 
                         bool const_mutation,
                         double sigma=0.138, 
                         double b=0.0, 
@@ -134,7 +114,7 @@ public:
         for (double & g : new_genome) {
             if (random.P(mut_rate)) {
                 const double step = random.GetNormal(0.0, 1.0);
-                g = ReflectIntoRange(g + step, GENE_MIN, GENE_MAX);
+                g = ReflectIntoRange(g + step, gene_min, gene_max);
             }
         }
 
@@ -152,10 +132,10 @@ public:
             mut_child = std::clamp(mut_child, MUT_MIN, MUT_MAX);
         }
 
-        DiagOrganism offspring(new_genome);
+        Organism offspring(new_genome, gene_min, gene_max);
         offspring.SetFitness(0.0); // remove parent's fitness
         offspring.SetMutationRate(mut_child);
-        offspring.SetStartIndex(start);
+        // offspring.SetStartIndex(start);
         // phenotype left as zeros by constructor, translator/evaluation will fill later
         return offspring;
     }

@@ -10,7 +10,7 @@ library(ggplot2)
 library(stringr)
 
 root_const <- "./Data/const-diag-final/"
-root_evolve <- "./Data/evolve-diag/"
+root_evolve <- "./Data/evolve-diag-final/"
 
 # Function to grab the last row of a file
 read_last_row <- function(file) {

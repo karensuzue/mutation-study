@@ -2,11 +2,11 @@
 
 #include "emp/base/vector.hpp"
 
-#include "DiagOrganism.hpp"
+#include "Organism.hpp"
 
-struct DiagSelect {
+struct Select {
     // Select a single parent index
-    size_t Tournament(const emp::vector<DiagOrganism> & pop, 
+    size_t Tournament(const emp::vector<Organism> & pop, 
                       size_t tour_size, 
                       emp::Random & random) {
         size_t best_idx = random.GetUInt(pop.size());

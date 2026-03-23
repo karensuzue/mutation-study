@@ -59,11 +59,16 @@ echo "SEED=${SEED}"
     --seed "${SEED}" \
     --start_U "${U_RATE}" \
     --const_mut 0 \
-    --valley_cross 1 \
+    --valley_cross 0 \
     --rand_phenotype 0 \
     --gens 50000 \
     --pop_size 3600 \
-    --genome_size 100
+    --genome_size 100 \
+    --gene_min -100.0 \
+    --gene_max 100.0 \
+    --selector "Tournament"\
+    --translator "ChangingEnv"\
+    --evaluator "SquaredError"
 
 status=$?
 

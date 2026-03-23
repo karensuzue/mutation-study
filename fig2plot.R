@@ -7,9 +7,9 @@ library(tidyr)
 library(ggplot2)
 library(stringr)
 
-root_evolve <- "./Data/evolve-diag/"
-root_const <- "./Data/const-diag2/"
-best_const_U <- 10
+root_evolve <- "./Data/evolve-diag-final/"
+root_const <- "./Data/const-diag-final/"
+best_const_U <- 6.3096
 
 # Function to parse U (genome-wide mutation rate), rep, kind from filename
 # Expects: history_<startU>_<rep>_(fitness|mutation).csv

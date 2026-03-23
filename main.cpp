@@ -2,36 +2,78 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 
-#include "DiagWorld.hpp"
+#include "Population.hpp"
 
 struct RunConfig {
     size_t seed = 1;
     double start_U = 1e-3; // GENOME-WIDE mutation rate
+
     bool const_mut = true;
     bool valley_cross = true;
-    bool rand_phenotype = false;
-    size_t gens = 1000;
-    // size_t reps = 1;
-    size_t pop_size = 100;
-    size_t genome_size = 10;
-};
+    bool rand_phenotype = false; // TODO!!
 
+    size_t gens = 1000;
+    size_t pop_size = 10;
+    size_t genome_size = 10;
+
+    double gene_min = -100.0;
+    double gene_max = 100.0;
+
+    emp::String selector = "Tournament"; 
+    emp::String translator = "ChangingEnv";
+    emp::String evaluator = "SquaredError";
+
+};
 
 void PrintUsage() {
     std::cout << "Options:\n"
         << "  --seed <size_t>           Seed\n"
-        << "  --start_U <double>        Starting genome-wide mutation rate\n"
+        << "  --start_U <double>        Starting genome-wide mutation rate\n\n"
+
         << "  --const_mut <0|1>         1 = constant mutation, 0 = evolving mutation\n"
         << "  --valley_cross <0|1>      1 = apply sawtooth transformation, 0 = don't apply\n"
-        << "  --rand_phenotype <0|1>    1 = stochastic phenotype, 0 = non-stochastic phenotype\n"
+        << "  --rand_phenotype <0|1>    1 = stochastic phenotype, 0 = non-stochastic phenotype (WIP!!)\n"
+
         << "  --gens <size_t>           Number of generations\n"
-        // << "  --reps <size_t>           Number of replicates\n"
         << "  --pop_size <size_t>       Population size\n"
-        << "  --genome_size <size_t>    Number of genes per organism\n"
+        << "  --genome_size <size_t>    Number of genes per organism\n\n"
+
+        << "  --gene_min <double>       Minimum gene value\n"
+        << "  --gene_max <double>       Maximum gene value\n\n"
+
+        << "  --selector <string>       Choose a selector: Tournament\n"
+        << "  --translator <string>     Choose a genome-to-phenotype translator: ExploitationRate, ChangingEnv (turn off valley_cross!)\n"
+        << "  --evaluator <string>      Choose a fitness evaluator: Aggregate, SquaredError\n\n"
+
         << "  --help                    Show this message\n";
 }
 
+bool IsOption(const emp::String & option) {
+    static const std::unordered_set<std::string> options = {
+        "--seed",
+        "--start_U",
+
+        "--const_mut",
+        "--valley_cross",
+        "--rand_phenotype",
+
+        "--gens",
+        "--pop_size",
+        "--genome_size",
+
+        "--gene_min",
+        "--gene_max",
+
+        "--selector",
+        "--translator",
+        "--evaluator",
+
+        "--help"
+    };
+    return options.count(option) > 0;
+}
 
 RunConfig ParseArgs(int argc, char * argv[]) {
     RunConfig cfg;
@@ -46,8 +88,9 @@ RunConfig ParseArgs(int argc, char * argv[]) {
                 std::exit(EXIT_FAILURE);
             }
             emp::String next = argv[i + 1];
-            if (next[0] == '-') { 
-                emp::notify::Error("Missing value for ", name, ", got option '", next, "' instead."); 
+            if (IsOption(next)) {
+                emp::notify::Error("Missing value for ", name,
+                                ", got option '", next, "' instead.");
                 std::exit(EXIT_FAILURE);
             }
         };
@@ -95,25 +138,16 @@ RunConfig ParseArgs(int argc, char * argv[]) {
         else if (arg == "--gens") {
             require_value(arg);
             auto val = std::stoull(argv[++i]);
-            if (val <= 0) {
+            if (val < 1) {
                 emp::notify::Error("--gens must be positive.");
                 std::exit(EXIT_FAILURE);
             }
             cfg.gens = static_cast<size_t>(val);
         }
-        // else if (arg == "--reps") {
-        //     require_value(arg);
-        //     auto val = std::stoull(argv[++i]);
-        //     if (val <= 0) {
-        //         emp::notify::Error("--reps must be positive.");
-        //         std::exit(EXIT_FAILURE);
-        //     }
-        //     cfg.reps = static_cast<size_t>(val);
-        // }
         else if (arg == "--pop_size") {
             require_value(arg);
             auto val = std::stoull(argv[++i]);
-            if (val <= 0) {
+            if (val < 1) {
                 emp::notify::Error("--pop_size must be positive.");
                 std::exit(EXIT_FAILURE);
             }
@@ -122,11 +156,31 @@ RunConfig ParseArgs(int argc, char * argv[]) {
         else if (arg == "--genome_size") {
             require_value(arg);
             auto val = std::stoull(argv[++i]);
-            if (val <= 0) {
+            if (val < 1) {
                 emp::notify::Error("--genome_size must be positive.");
                 std::exit(EXIT_FAILURE);
             }
             cfg.genome_size = static_cast<size_t>(val);
+        }
+        else if (arg == "--gene_min") {
+            require_value(arg);
+            cfg.gene_min = std::stod(argv[++i]);
+        }
+        else if (arg == "--gene_max") {
+            require_value(arg);
+            cfg.gene_max = std::stod(argv[++i]);
+        }
+        else if (arg == "--selector") {
+            require_value(arg);
+            cfg.selector = argv[++i];
+        }
+        else if (arg == "--translator") {
+            require_value(arg);
+            cfg.translator = argv[++i];
+        }
+        else if (arg == "--evaluator") {
+            require_value(arg);
+            cfg.evaluator = argv[++i];
         }
         else {
             emp::notify::Error("Unknown argument: ", arg);
@@ -141,23 +195,38 @@ int main(int argc, char * argv[]) {
 
     std::cout << "seed = " << cfg.seed << "\n";
     std::cout << "start_U = " << cfg.start_U << "\n";
+
     std::cout << "const_mut = " << cfg.const_mut << "\n";
     std::cout << "valley_cross = " << cfg.valley_cross << "\n";
-    std::cout << "rand_phenotype = " << cfg.rand_phenotype << "\n";
+    std::cout << "rand_phenotype (WIP) = " << cfg.rand_phenotype << "\n";
+
     std::cout << "gens = " << cfg.gens << "\n";
-    // std::cout << "reps = " << cfg.reps << "\n";
     std::cout << "pop_size = " << cfg.pop_size << "\n";
     std::cout << "genome_size = " << cfg.genome_size << "\n";
+
+    std::cout << "gene_min = " << cfg.gene_min << "\n";
+    std::cout << "gene_max = " << cfg.gene_max << "\n";
+
+    std::cout << "selector = " << cfg.selector << "\n";
+    std::cout << "translator = " << cfg.translator << "\n";
+    std::cout << "evaluator = " << cfg.evaluator << "\n";
     
-    DiagWorld pop;
+    Population pop;
     
     pop.SetConstantMutation(cfg.const_mut);
     pop.SetValleyCrossing(cfg.valley_cross);
     pop.SetStochasticPhenotype(cfg.rand_phenotype);
+
     pop.SetGenerations(cfg.gens);
-    // pop.SetReplicates(cfg.reps);
     pop.SetPopSize(cfg.pop_size);
     pop.SetGenomeSize(cfg.genome_size);
+
+    pop.SetGeneMin(cfg.gene_min);
+    pop.SetGeneMax(cfg.gene_max);
+
+    pop.SetSelector(cfg.selector);
+    pop.SetTranslator(cfg.translator);
+    pop.SetEvaluator(cfg.evaluator);
 
     const double mu = cfg.start_U / static_cast<double>(cfg.genome_size);
     pop.SetInitMutation(mu);
