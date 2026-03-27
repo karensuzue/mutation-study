@@ -50,7 +50,8 @@ private:
 
     size_t genome_size = 100;
     size_t max_generations = 50000;
-    size_t max_replicates = 20;
+    // size_t max_replicates = 20;
+    max_replicates = 100;
     size_t pop_size = 3600;
 
     double gene_min = -100.0;
@@ -65,7 +66,8 @@ private:
     bool valley_crossing = true; // toggles sawtooth transformation
 
     /* ------ CHANGING ENVIRONMENT ------ */
-    size_t change_env_step = 300; // change target genome every ? generations
+    // size_t change_env_step = 300; // change target genome every ? generations
+    size_t change_env_step = 5000;
     genome_t target_genome = genome_t(genome_size);
 
     // TODO!!!!!!!!!!!!!!!!!!!!!!!!!

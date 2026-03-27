@@ -9,7 +9,10 @@ library(tidyr)
 library(ggplot2)
 library(stringr)
 
-root_const <- "./Data/const-diag-final/"
+# root_const <- "./Data/const-diag-final/"
+# root_evolve <- "./Data/evolve-diag-final/"
+
+root_const <- "./Data/const-changing/"
 root_evolve <- "./Data/evolve-diag-final/"
 
 # Function to grab the last row of a file
@@ -169,7 +172,7 @@ p <- ggplot() +
      theme_bw()
 
     
-    ggsave("fig1_loglog_diag.pdf", p, width=7, height=5)
+    ggsave("fig3_loglog_changing.pdf", p, width=7, height=5)
 
 
 p2 <- ggplot() +
@@ -236,4 +239,4 @@ p2 <- ggplot() +
      theme_bw()
 
     
-    ggsave("fig1_linear_diag.pdf", p2, width=7, height=5)
+    ggsave("fig3_linear_changing.pdf", p2, width=7, height=5)
