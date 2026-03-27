@@ -2,17 +2,13 @@
 ########## Define Resources Needed with SBATCH Lines ##########
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --array=0-999
+#SBATCH --array=0-619
 #SBATCH --cpus-per-task=1
-#SBATCH -t 02:30:00
+#SBATCH -t 03:30:00
 #SBATCH --mem=10GB
 #SBATCH --job-name=fig1
 #SBATCH -p defq
 ###############################################################
-
-# Submit in two chunks because of the 1000 job limit.
-# First chunk:  sbatch fig3-const.sb
-# Second chunk: sbatch --export=OFFSET=1000 --array=0-219 fig3-const.sb
 
 module purge
 module load GCC/13.3.0
@@ -24,9 +20,9 @@ fi
 
 ID=$(( SLURM_ARRAY_TASK_ID + ${OFFSET:-0} ))
 
-# 61 * 20 = 1220 jobs
+# 31 * 20 = 620 jobs
 U_RATES=(
-    1.0000e-4
+    # 1.0000e-4
     # 1.2589e-4
     # 1.5849e-4
     # 1.9953e-4
@@ -37,7 +33,7 @@ U_RATES=(
     # 6.3096e-4
     # 7.9433e-4
 
-    1.0000e-3
+    # 1.0000e-3
     # 1.2589e-3
     # 1.5849e-3
     # 1.9953e-3
@@ -48,7 +44,7 @@ U_RATES=(
     # 6.3096e-3
     # 7.9433e-3
 
-    1.0000e-2
+    # 1.0000e-2
     # 1.2589e-2
     # 1.5849e-2
     # 1.9953e-2
@@ -60,43 +56,39 @@ U_RATES=(
     # 7.9433e-2
 
     1.0000e-1
-    # 1.2589e-1
-    # 1.5849e-1
-    # 1.9953e-1
-    # 2.5119e-1
-    # 3.1623e-1
-    # 3.9811e-1
-    # 5.0119e-1
-    # 6.3096e-1
-    # 7.9433e-1
+    1.2589e-1
+    1.5849e-1
+    1.9953e-1
+    2.5119e-1
+    3.1623e-1
+    3.9811e-1
+    5.0119e-1
+    6.3096e-1
+    7.9433e-1
 
     1.0000
-    # 1.2589
-    # 1.5849
-    # 1.9953
-    # 2.5119
-    # 3.1623
-    # 3.9811
-    # 5.0119
-    # 6.3096
-    # 7.9433
+    1.2589
+    1.5849
+    1.9953
+    2.5119
+    3.1623
+    3.9811
+    5.0119
+    6.3096
+    7.9433
 
     1.0000e1
-    # 1.2589e1
-    # 1.5849e1
-    # 1.9953e1
-    # 2.5119e1
-    # 3.1623e1
-    # 3.9811e1
-    # 5.0119e1
-    # 6.3096e1
-    # 7.9433e1
+    1.2589e1
+    1.5849e1
+    1.9953e1
+    2.5119e1
+    3.1623e1
+    3.9811e1
+    5.0119e1
+    6.3096e1
+    7.9433e1
 
     1.0000e2
-
-    1.0000e3
-    
-    1.0000e4
 )
 
 NUM_U=${#U_RATES[@]}
@@ -129,7 +121,7 @@ echo "SEED=${SEED}"
     --const_mut 1 \
     --valley_cross 0 \
     --rand_phenotype 0 \
-    --gens 100000 \
+    --gens 200000 \
     --pop_size 3600 \
     --genome_size 100 \
     --gene_min -100.0 \
@@ -137,7 +129,6 @@ echo "SEED=${SEED}"
     --selector "Tournament"\
     --translator "ChangingEnv"\
     --evaluator "SquaredError"
-
 
 status=$?
 
