@@ -124,7 +124,7 @@ echo "REP_INDEX=${REP_INDEX}"
 echo "U_RATE=${U_RATE}"
 echo "SEED=${SEED}"
 
-./Mutation-Study \
+../../Mutation-Study \
     --seed "${SEED}" \
     --start_U "${U_RATE}" \
     --const_mut 1 \
