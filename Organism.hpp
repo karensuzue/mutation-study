@@ -8,6 +8,7 @@
 
 # pragma once
 
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <numeric>
@@ -23,7 +24,7 @@ static constexpr double MUT_MAX = 1.0;
 // Reflect a value back into [lo, hi] by "rebounding" off the walls.
 // Also corrects cases where mutations overshoot by more than one interval width.
 // For example: -0.7 -> 0.7, 100.7 -> 99.3
-double ReflectIntoRange(double value, double lo, double hi) {
+inline double ReflectIntoRange(double value, double lo, double hi) {
     assert(lo < hi && "Lower boundary must be less than the upper boundary!");
     const double width = hi - lo;
     double shifted_value = value - lo; // shift to [0, width]

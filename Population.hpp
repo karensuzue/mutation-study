@@ -1,8 +1,5 @@
 /*
  * This class instantiates evolutionary runs.
- * Based on:
- *      Hernandez, J. G., Lalejini, A., & Ofria, C. (2022).
- *      A suite of diagnostic metrics for characterizing selection schemes.
  */
 
 #pragma once
@@ -51,7 +48,7 @@ private:
     size_t genome_size = 100;
     size_t max_generations = 50000;
     // size_t max_replicates = 20;
-    max_replicates = 100;
+    size_t max_replicates = 100;
     size_t pop_size = 3600;
 
     double gene_min = -100.0;
@@ -67,8 +64,8 @@ private:
 
     /* ------ CHANGING ENVIRONMENT ------ */
     // size_t change_env_step = 300; // change target genome every ? generations
-    size_t change_env_step = 5000;
-    genome_t target_genome = genome_t(genome_size);
+    size_t change_env_step = 1000;
+    genome_t target_genome;
 
     // TODO!!!!!!!!!!!!!!!!!!!!!!!!!
     bool rand_phenotype = false; // turns on stochastic phenotype expression
@@ -140,6 +137,9 @@ public:
 
     void SetGeneMin(double g_min) { gene_min = g_min; }
     void SetGeneMax(double g_max) { gene_max = g_max; }
+
+    void SetChangeEnvStep(size_t ces) { change_env_step = ces; }
+    genome_t GetTarget() const { return target_genome; }
 
     void SetInitMutation(double mu) { init_mut_rate = mu; }
     double GetInitMutation() const { return init_mut_rate; }
@@ -274,9 +274,17 @@ public:
     
     // Initialize target genome sequence if `changing_env` is on
     void InitializeTarget(emp::Random & random) {
+        target_genome.resize(genome_size);
         for (double & gene : target_genome) {
             gene = random.GetDouble(gene_min, gene_max);
         }
+    }
+
+    // Changes a random gene in the target genome
+    void ChangeTarget(emp::Random & random) {
+        assert(target_genome.size() == genome_size && "target_genome size does not match genome_size.");
+        size_t gene_idx = random.GetSizeT(genome_size);
+        target_genome[gene_idx] = random.GetDouble(gene_min, gene_max);
     }
 
     // This function computes the fitness of the whole population
@@ -302,10 +310,11 @@ public:
         assert(pop_size == organisms.size() && 
                "pop_size does not match pop.organisms.size().");
 
-        pop_t next_pop(pop_size);
-        for (Organism & org : next_pop) {
+        pop_t next_pop;
+        next_pop.reserve(pop_size);
+        for (size_t i = 0; i < pop_size; ++i) {
             const size_t parent_idx = selector_fn(organisms, random);
-            org = organisms[parent_idx].Mutate(random, const_mutation_rate);
+            next_pop.push_back(organisms[parent_idx].Mutate(random, const_mutation_rate));
         }
         organisms.swap(next_pop);
     }
@@ -318,13 +327,16 @@ public:
         if (!translator_fn) ConfigureTranslator();
         if (!evaluator_fn) ConfigureEvaluator();
 
+        // for now
+        if (translator_name == "ChangingEnv") valley_crossing = false; 
+
         InitializeUniform(random);
-        // InitializeUniform();
+        InitializeTarget(random);
         SetPopulationMutation(init_mut_rate);
 
         for (generation = 0; generation < max_generations; ++generation) {
-            if (generation % change_env_step == 0 && translator_name == "ChangingEnv") {
-                InitializeTarget(random);
+            if (generation > 0 && generation % change_env_step == 0 && translator_name == "ChangingEnv") {
+                ChangeTarget(random);
             }
             EvaluateFitness();
             RecordGeneration(generation);

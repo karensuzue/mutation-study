@@ -11,7 +11,7 @@ struct RunConfig {
     double start_U = 1e-3; // GENOME-WIDE mutation rate
 
     bool const_mut = true;
-    bool valley_cross = true;
+    bool valley_cross = false;
     bool rand_phenotype = false; // TODO!!
 
     size_t gens = 1000;
@@ -21,6 +21,8 @@ struct RunConfig {
     double gene_min = -100.0;
     double gene_max = 100.0;
 
+    size_t change_env_step = 300;
+
     emp::String selector = "Tournament"; 
     emp::String translator = "ChangingEnv";
     emp::String evaluator = "SquaredError";
@@ -29,25 +31,27 @@ struct RunConfig {
 
 void PrintUsage() {
     std::cout << "Options:\n"
-        << "  --seed <size_t>           Seed\n"
-        << "  --start_U <double>        Starting genome-wide mutation rate\n\n"
+        << "  --seed <size_t>               Seed\n"
+        << "  --start_U <double>            Starting genome-wide mutation rate\n\n"
 
-        << "  --const_mut <0|1>         1 = constant mutation, 0 = evolving mutation\n"
-        << "  --valley_cross <0|1>      1 = apply sawtooth transformation, 0 = don't apply\n"
-        << "  --rand_phenotype <0|1>    1 = stochastic phenotype, 0 = non-stochastic phenotype (WIP!!)\n"
+        << "  --const_mut <0|1>             1 = constant mutation, 0 = evolving mutation\n"
+        << "  --valley_cross <0|1>          1 = apply sawtooth transformation, 0 = don't apply (WIP!! Currently valid for gene values between 0.0-100.0)\n"
+        << "  --rand_phenotype <0|1>        1 = stochastic phenotype, 0 = non-stochastic phenotype (WIP!!)\n"
 
-        << "  --gens <size_t>           Number of generations\n"
-        << "  --pop_size <size_t>       Population size\n"
-        << "  --genome_size <size_t>    Number of genes per organism\n\n"
+        << "  --gens <size_t>               Number of generations\n"
+        << "  --pop_size <size_t>           Population size\n"
+        << "  --genome_size <size_t>        Number of genes per organism\n\n"
 
-        << "  --gene_min <double>       Minimum gene value\n"
-        << "  --gene_max <double>       Maximum gene value\n\n"
+        << "  --gene_min <double>           Minimum gene value\n"
+        << "  --gene_max <double>           Maximum gene value\n\n"
 
-        << "  --selector <string>       Choose a selector: Tournament\n"
-        << "  --translator <string>     Choose a genome-to-phenotype translator: ExploitationRate, ChangingEnv (turn off valley_cross!)\n"
-        << "  --evaluator <string>      Choose a fitness evaluator: Aggregate, SquaredError\n\n"
+        << "  --change_env_step <size_t>    Number of generations between environment changes; valid only for ChangingEnv translator\n\n"
 
-        << "  --help                    Show this message\n";
+        << "  --selector <string>           Choose a selector: Tournament\n"
+        << "  --translator <string>         Choose a genome-to-phenotype translator: ExploitationRate, ChangingEnv\n"
+        << "  --evaluator <string>          Choose a fitness evaluator: Aggregate, SquaredError\n\n"
+
+        << "  --help                        Show this message\n";
 }
 
 bool IsOption(const emp::String & option) {
@@ -65,6 +69,8 @@ bool IsOption(const emp::String & option) {
 
         "--gene_min",
         "--gene_max",
+
+        "--change_env_step",
 
         "--selector",
         "--translator",
@@ -170,6 +176,15 @@ RunConfig ParseArgs(int argc, char * argv[]) {
             require_value(arg);
             cfg.gene_max = std::stod(argv[++i]);
         }
+        else if (arg == "--change_env_step") {
+            require_value(arg);
+            auto val = std::stoull(argv[++i]);
+            if (val < 1) {
+                emp::notify::Error("--change_env_step must be positive.");
+                std::exit(EXIT_FAILURE);
+            } 
+            cfg.change_env_step = static_cast<size_t>(val);
+        }
         else if (arg == "--selector") {
             require_value(arg);
             cfg.selector = argv[++i];
@@ -194,22 +209,24 @@ int main(int argc, char * argv[]) {
     RunConfig cfg = ParseArgs(argc, argv);
 
     std::cout << "seed = " << cfg.seed << "\n";
-    std::cout << "start_U = " << cfg.start_U << "\n";
+    std::cout << "start_U = " << cfg.start_U << "\n\n";
 
     std::cout << "const_mut = " << cfg.const_mut << "\n";
     std::cout << "valley_cross = " << cfg.valley_cross << "\n";
-    std::cout << "rand_phenotype (WIP) = " << cfg.rand_phenotype << "\n";
+    std::cout << "rand_phenotype (WIP) = " << cfg.rand_phenotype << "\n\n";
 
     std::cout << "gens = " << cfg.gens << "\n";
     std::cout << "pop_size = " << cfg.pop_size << "\n";
-    std::cout << "genome_size = " << cfg.genome_size << "\n";
+    std::cout << "genome_size = " << cfg.genome_size << "\n\n";
 
     std::cout << "gene_min = " << cfg.gene_min << "\n";
-    std::cout << "gene_max = " << cfg.gene_max << "\n";
+    std::cout << "gene_max = " << cfg.gene_max << "\n\n";
 
-    std::cout << "selector = " << cfg.selector << "\n";
-    std::cout << "translator = " << cfg.translator << "\n";
-    std::cout << "evaluator = " << cfg.evaluator << "\n";
+    std::cout << "change_env_step = " << cfg.change_env_step << "\n\n";
+
+    std::cout << "selector = " << cfg.selector << "\n\n";
+    std::cout << "translator = " << cfg.translator << "\n\n";
+    std::cout << "evaluator = " << cfg.evaluator << "\n\n";
     
     Population pop;
     
@@ -223,6 +240,8 @@ int main(int argc, char * argv[]) {
 
     pop.SetGeneMin(cfg.gene_min);
     pop.SetGeneMax(cfg.gene_max);
+
+    pop.SetChangeEnvStep(cfg.change_env_step);
 
     pop.SetSelector(cfg.selector);
     pop.SetTranslator(cfg.translator);
@@ -242,5 +261,6 @@ int main(int argc, char * argv[]) {
     // pop.MultiRun(tag);
     emp::Random random(cfg.seed);
     pop.Run(random);
-    pop.ExportHistory("history_" + tag + "_" + std::to_string(cfg.seed));
+    pop.ExportHistory("/mnt/scratch/suzuekar/history_" + tag + "_" + std::to_string(cfg.seed));
+
 }

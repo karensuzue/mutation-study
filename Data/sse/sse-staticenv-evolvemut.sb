@@ -2,13 +2,22 @@
 ########## Define Resources Needed with SBATCH Lines ##########
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --array=0-139
+#SBATCH --array=0-999
 #SBATCH --cpus-per-task=1
-#SBATCH -t 02:30:00
+#SBATCH -t 03:30:00
 #SBATCH --mem=10GB
-#SBATCH --job-name=fig1
+#SBATCH --job-name=fig3
 #SBATCH -p defq
 ###############################################################
+
+# This script submits sum-of-squared-error (SSE) experiments under static environment
+# and constant mutation
+
+# Submit in four chunks because of the 1000 job limit.
+# First chunk:  sbatch fig3-const.sb
+# Second chunk: sbatch --export=OFFSET=1000 fig3-const.sb
+# Third chunk: sbatch --export=OFFSET=2000 fig3-const.sb
+# Fourth chunk: sbatch --export=OFFSET=3000 --array=0-99 fig3-const.sb
 
 module purge
 module load GCC/13.3.0
@@ -18,21 +27,81 @@ if [ -z "${SLURM_ARRAY_TASK_ID}" ]; then
     SLURM_ARRAY_TASK_ID=0
 fi
 
-ID=$(( SLURM_ARRAY_TASK_ID ))
+ID=$(( SLURM_ARRAY_TASK_ID + ${OFFSET:-0} ))
 
-# 7 * 20 = 140 jobs
+# 31 * 100 = 3100 jobs
 U_RATES=(
-    1.0000e-4
-    1.0000e-2
+    # 1.0000e-4
+    # 1.2589e-4
+    # 1.5849e-4
+    # 1.9953e-4
+    # 2.5119e-4
+    # 3.1623e-4
+    # 3.9811e-4
+    # 5.0119e-4
+    # 6.3096e-4
+    # 7.9433e-4
+
+    # 1.0000e-3
+    # 1.2589e-3
+    # 1.5849e-3
+    # 1.9953e-3
+    # 2.5119e-3
+    # 3.1623e-3
+    # 3.9811e-3
+    # 5.0119e-3
+    # 6.3096e-3
+    # 7.9433e-3
+
+    # 1.0000e-2
+    # 1.2589e-2
+    # 1.5849e-2
+    # 1.9953e-2
+    # 2.5119e-2
+    # 3.1623e-2
+    # 3.9811e-2
+    # 5.0119e-2
+    # 6.3096e-2
+    # 7.9433e-2
+
+    1.0000e-1
+    1.2589e-1
+    1.5849e-1
+    1.9953e-1
+    2.5119e-1
+    3.1623e-1
+    3.9811e-1
+    5.0119e-1
+    6.3096e-1
+    7.9433e-1
+
     1.0000
+    1.2589
+    1.5849
+    1.9953
+    2.5119
     3.1623
+    3.9811
+    5.0119
     6.3096
+    7.9433
+
     1.0000e1
+    1.2589e1
+    1.5849e1
+    1.9953e1
+    2.5119e1
+    3.1623e1
+    3.9811e1
+    5.0119e1
+    6.3096e1
+    7.9433e1
+
     1.0000e2
 )
 
 NUM_U=${#U_RATES[@]}
-NUM_REPS=20
+NUM_REPS=100
 TOTAL_JOBS=$(( NUM_U * NUM_REPS ))
 
 # Safety check
@@ -48,26 +117,27 @@ U_RATE=${U_RATES[$U_INDEX]}
 SEED=$(( REP_INDEX + 1 ))
 
 echo "SLURM_ARRAY_TASK_ID=${SLURM_ARRAY_TASK_ID}"
+echo "OFFSET=${OFFSET:-0}"
 echo "ID=${ID}"
 echo "U_INDEX=${U_INDEX}"
 echo "REP_INDEX=${REP_INDEX}"
 echo "U_RATE=${U_RATE}"
 echo "SEED=${SEED}"
 
-# TURN OFF CONSTANT MUTATION RATE
 ./Mutation-Study \
     --seed "${SEED}" \
     --start_U "${U_RATE}" \
     --const_mut 0 \
     --valley_cross 0 \
     --rand_phenotype 0 \
-    --gens 50000 \
+    --gens 200000 \
     --pop_size 3600 \
     --genome_size 100 \
     --gene_min -100.0 \
     --gene_max 100.0 \
+    --change_env_step 500 \
     --selector "Tournament"\
-    --translator "ChangingEnv"\
+    --translator "ExploitationRate"\
     --evaluator "SquaredError"
 
 status=$?

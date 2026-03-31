@@ -2,13 +2,22 @@
 ########## Define Resources Needed with SBATCH Lines ##########
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --array=0-619
+#SBATCH --array=0-999
 #SBATCH --cpus-per-task=1
 #SBATCH -t 03:30:00
 #SBATCH --mem=10GB
-#SBATCH --job-name=fig1
+#SBATCH --job-name=fig3
 #SBATCH -p defq
 ###############################################################
+
+# This script submits sum-of-squared-error (SSE) experiments under static environment
+# and constant mutation
+
+# Submit in four chunks because of the 1000 job limit.
+# First chunk:  sbatch fig3-const.sb
+# Second chunk: sbatch --export=OFFSET=1000 fig3-const.sb
+# Third chunk: sbatch --export=OFFSET=2000 fig3-const.sb
+# Fourth chunk: sbatch --export=OFFSET=3000 --array=0-99 fig3-const.sb
 
 module purge
 module load GCC/13.3.0
@@ -20,7 +29,7 @@ fi
 
 ID=$(( SLURM_ARRAY_TASK_ID + ${OFFSET:-0} ))
 
-# 31 * 20 = 620 jobs
+# 31 * 100 = 3100 jobs
 U_RATES=(
     # 1.0000e-4
     # 1.2589e-4
@@ -92,7 +101,7 @@ U_RATES=(
 )
 
 NUM_U=${#U_RATES[@]}
-NUM_REPS=20
+NUM_REPS=100
 TOTAL_JOBS=$(( NUM_U * NUM_REPS ))
 
 # Safety check
@@ -127,7 +136,7 @@ echo "SEED=${SEED}"
     --gene_min -100.0 \
     --gene_max 100.0 \
     --selector "Tournament"\
-    --translator "ChangingEnv"\
+    --translator "ExploitationRate"\
     --evaluator "SquaredError"
 
 status=$?
