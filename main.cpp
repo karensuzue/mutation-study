@@ -261,6 +261,9 @@ int main(int argc, char * argv[]) {
     // pop.MultiRun(tag);
     emp::Random random(cfg.seed);
     pop.Run(random);
-    pop.ExportHistory("/mnt/scratch/suzuekar/history_" + tag + "_" + std::to_string(cfg.seed));
+    pop.ExportHistory("/mnt/scratch/suzuekar/history_" + 
+        tag + "_" + 
+        std::to_string(cfg.change_env_step) + "_" +
+        std::to_string(cfg.seed));
 
 }
