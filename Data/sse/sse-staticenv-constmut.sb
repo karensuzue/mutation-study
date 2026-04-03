@@ -14,10 +14,10 @@
 # and constant mutation
 
 # Submit in four chunks because of the 1000 job limit.
-# First chunk:  sbatch fig3-const.sb
-# Second chunk: sbatch --export=OFFSET=1000 fig3-const.sb
-# Third chunk: sbatch --export=OFFSET=2000 fig3-const.sb
-# Fourth chunk: sbatch --export=OFFSET=3000 --array=0-99 fig3-const.sb
+# First chunk:  sbatch sse-staticenv-constmut.sb
+# Second chunk: sbatch --export=OFFSET=1000 sse-staticenv-constmut.sb
+# Third chunk: sbatch --export=OFFSET=2000 sse-staticenv-constmut.sb
+# Fourth chunk: sbatch --export=OFFSET=3000 --array=0-99 sse-staticenv-constmut.sb
 
 module purge
 module load GCC/13.3.0

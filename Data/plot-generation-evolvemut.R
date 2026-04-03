@@ -1,4 +1,4 @@
-# This script plots evolving mutation rate and fitness over generations
+# This script plots evolving mutation rate AND fitness over generations
 
 library(fs)
 library(readr)
@@ -109,7 +109,7 @@ avg_best_U_fit_df <- all_best_U_fit_df %>%
 # avg_best_U_fit_df
 
 
-# --- SAFE FOR LOG PLOTS ---
+# --- SAFE VALUES FOR LOG PLOTS ---
 eps <- 1e-12
 avg_mut_log <- avg_mut_df %>%
                mutate(
@@ -261,8 +261,8 @@ p_mut_median_logy <- ggplot(median_mut_df, aes(x=Generation, y=Median_Mean_U, co
                             y="Median U (across replicates)",
                             color="Start_U"
                        )
-ggsave("fig2_fit_linear_diag.pdf", p_fit_linear, width=7, height=5)
-ggsave("fig2_fit_logy_diag.pdf", p_fit_logy, width=7, height=5)
-ggsave("fig2_mut_linear_diag.pdf", p_mut_linear, width=7, height=5)
-ggsave("fig2_mut_logy_diag.pdf", p_mut_logy, width=7, height=5)
-ggsave("fig2_mut_median_logy_diag.pdf", p_mut_median_logy, width=7, height=5)
+ggsave("fig_generation_evolvemut_linear_fit.pdf", p_fit_linear, width=7, height=5)
+ggsave("fig_generation_evolvemut_logy_fit.pdf", p_fit_logy, width=7, height=5)
+ggsave("fig_generation_evolvemut_linear_mut.pdf", p_mut_linear, width=7, height=5)
+ggsave("fig_generation_evolvemut_logy_mut.pdf", p_mut_logy, width=7, height=5)
+ggsave("fig_generation_evolvemut_medianlogy_mut", p_mut_median_logy, width=7, height=5)
