@@ -21,7 +21,8 @@ struct RunConfig {
     double gene_min = -100.0;
     double gene_max = 100.0;
 
-    size_t change_env_step = 300;
+    size_t change_env_step = 500;
+    size_t change_per_step = 2;
 
     emp::String selector = "Tournament"; 
     emp::String translator = "ChangingEnv";
@@ -45,7 +46,8 @@ void PrintUsage() {
         << "  --gene_min <double>           Minimum gene value\n"
         << "  --gene_max <double>           Maximum gene value\n\n"
 
-        << "  --change_env_step <size_t>    Number of generations between environment changes; valid only for ChangingEnv translator\n\n"
+        << "  --change_env_step <size_t>    Number of generations between environment changes; valid only for ChangingEnv translator\n"
+        << "  --change_per_step <size_t>    Number of target genes to modify at each env. change; valid only for ChangingEnv translator\n\n"
 
         << "  --selector <string>           Choose a selector: Tournament\n"
         << "  --translator <string>         Choose a genome-to-phenotype translator: ExploitationRate, ChangingEnv\n"
@@ -71,6 +73,7 @@ bool IsOption(const emp::String & option) {
         "--gene_max",
 
         "--change_env_step",
+        "--change_per_step",
 
         "--selector",
         "--translator",
@@ -185,6 +188,11 @@ RunConfig ParseArgs(int argc, char * argv[]) {
             } 
             cfg.change_env_step = static_cast<size_t>(val);
         }
+        else if (arg == "--change_per_step") {
+            require_value(arg);
+            auto val = std::stoull(argv[++i]);
+            cfg.change_per_step = static_cast<size_t>(val);
+        }
         else if (arg == "--selector") {
             require_value(arg);
             cfg.selector = argv[++i];
@@ -222,7 +230,8 @@ int main(int argc, char * argv[]) {
     std::cout << "gene_min = " << cfg.gene_min << "\n";
     std::cout << "gene_max = " << cfg.gene_max << "\n\n";
 
-    std::cout << "change_env_step = " << cfg.change_env_step << "\n\n";
+    std::cout << "change_env_step = " << cfg.change_env_step << "\n";
+    std::cout << "change_per_step = " << cfg.change_per_step << "\n\n";
 
     std::cout << "selector = " << cfg.selector << "\n\n";
     std::cout << "translator = " << cfg.translator << "\n\n";
@@ -242,6 +251,7 @@ int main(int argc, char * argv[]) {
     pop.SetGeneMax(cfg.gene_max);
 
     pop.SetChangeEnvStep(cfg.change_env_step);
+    pop.SetChangePerStep(cfg.change_per_step);
 
     pop.SetSelector(cfg.selector);
     pop.SetTranslator(cfg.translator);
@@ -261,9 +271,10 @@ int main(int argc, char * argv[]) {
     // pop.MultiRun(tag);
     emp::Random random(cfg.seed);
     pop.Run(random);
-    pop.ExportHistory("/mnt/scratch/suzuekar/history_" + 
-        tag + "_" + 
-        std::to_string(cfg.change_env_step) + "_" +
+    pop.ExportHistory("/mnt/scratch/suzuekar/history_U" + 
+        tag + "_change" + 
+        std::to_string(cfg.change_per_step) + "_per" +
+        std::to_string(cfg.change_env_step) + "_" + 
         std::to_string(cfg.seed));
 
 }

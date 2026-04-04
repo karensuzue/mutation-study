@@ -14,6 +14,7 @@
 
 #include "emp/base/vector.hpp"
 #include "emp/math/Random.hpp"
+#include "emp/bits/Bits.hpp"
 
 #include "Organism.hpp"
 #include "Select.hpp"
@@ -65,6 +66,7 @@ private:
     /* ------ CHANGING ENVIRONMENT ------ */
     // size_t change_env_step = 300; // change target genome every ? generations
     size_t change_env_step = 1000;
+    size_t change_per_step = 1; // no. of target genes to modify at each environmental change
     genome_t target_genome;
 
     // TODO!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -139,6 +141,7 @@ public:
     void SetGeneMax(double g_max) { gene_max = g_max; }
 
     void SetChangeEnvStep(size_t ces) { change_env_step = ces; }
+    void SetChangePerStep(size_t cps) { change_per_step = cps; }
     genome_t GetTarget() const { return target_genome; }
 
     void SetInitMutation(double mu) { init_mut_rate = mu; }
@@ -283,8 +286,33 @@ public:
     // Changes a random gene in the target genome
     void ChangeTarget(emp::Random & random) {
         assert(target_genome.size() == genome_size && "target_genome size does not match genome_size.");
-        size_t gene_idx = random.GetSizeT(genome_size);
-        target_genome[gene_idx] = random.GetDouble(gene_min, gene_max);
+        // This method can pick the same genes more than once...
+        // for (size_t i = 0; i < change_per_step; ++i) {
+        //     size_t gene_idx = random.GetSizeT(genome_size);
+        //     target_genome[gene_idx] = random.GetDouble(gene_min, gene_max);
+        // }
+
+        emp::BitVector indices{genome_size}; // doesn't work, because genome_size is a runtime variable...
+        indices.ChooseRandom(random, change_per_step);
+        for (size_t idx : indices) { // Iterates only over bits set to 1
+            std::cout << idx << ", ";
+            target_genome[idx] = random.GetDouble(gene_min, gene_max);
+        }
+
+        // Build a shuffled index list and take the first change_per_step of them
+        // emp::vector<size_t> indices(genome_size);
+        // std::iota(indices.begin(), indices.end(), 0);
+
+        // // Shuffle only the first change_per_step slots
+        // const size_t n = std::min(change_per_step, genome_size);
+        // for (size_t i = 0; i < n; ++i) {
+        //     size_t j = i + random.GetSizeT(genome_size - i);
+        //     std::swap(indices[i], indices[j]);
+        // }
+
+        // for (size_t i = 0; i < n; ++i) {
+        //     target_genome[indices[i]] = random.GetDouble(gene_min, gene_max);
+        // }
     }
 
     // This function computes the fitness of the whole population
@@ -428,7 +456,7 @@ public:
         if (mutation_file.is_open()) {
             // mu: per-site mutation rate
             // U: expected number of mutations per organism (genome-wide)
-            mutation_file << "Generation,Best_mu,Mean_mu,Best_U,Mean_U,Highest_ID\n";
+            mutation_file << "Generation,Highest_mu,Mean_mu,Highest_U,Mean_U,Highest_ID\n";
             mutation_file << std::fixed << std::setprecision(6);
 
             for (const GenerationStats & gen : history) {

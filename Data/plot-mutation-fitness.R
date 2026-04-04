@@ -16,6 +16,9 @@ root_evolve <- "./diag-exploit-vc/evolve-diag-final/"
 # Include results from evolving mutation runs?
 include_evolve <- FALSE
 
+# Toggle best or mean fitness
+best_or_mean_f <- "Best" # "Best", "Mean"
+
 # Function to grab the last row of a file
 read_last_row <- function(file) {
     df <- read_csv(file, show_col_types=FALSE)
@@ -47,8 +50,8 @@ compile_all <- function(files) {
         # Grab last row
         last_row <- read_last_row(f)
         if (is.null(last_row)) next
-        # Get the "Mean_*" value from that row
-        val <- if (meta$kind == "fitness") last_row$Mean_F else last_row$Mean_U
+        # Get the "Mean/Best_*" value from that row
+        val <- if (meta$kind == "fitness") last_row[[paste0(best_or_mean_f, "_F")]] else last_row$Mean_U
         # Append a new row to 'rows'
         rows[[length(rows)+1]] <- data.frame(rep=meta$rep, kind=meta$kind, value=as.numeric(val), U=meta$U)
     }
@@ -89,12 +92,11 @@ const_summary <- const_wide %>%
                  ) %>%
                  arrange(U) # sort rows by increasing U
 # const_summary
-write_csv(const_summary, "const_summary.csv")
+# write_csv(const_summary, "const_summary.csv")
 
 
 best_U_avg <- const_summary %>%
               slice_max(order_by=avg_fit, n=1, with_ties=TRUE)
-
 best_U_avg
 
 # These are numbers!!
@@ -105,6 +107,7 @@ best_U_x_lin <- best_U_avg$U[1]
 worst_U_avg <- const_summary %>%
                slice_min(order_by=avg_fit, n=1, with_ties=TRUE)
 worst_U_avg
+
 worst_U_x_log <- log10(worst_U_avg$U[1])
 worst_U_x_lin <- worst_U_avg$U[1]
 

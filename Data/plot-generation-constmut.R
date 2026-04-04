@@ -8,8 +8,14 @@ library(ggplot2)
 library(stringr)
 
 root_const <- "/mnt/d/MINE/sse-staticenv-constmut/"
-best_U <- "3.1623e\\-04"
-worst_U <- "1.0000e\\+02"
+# best_U <- "1.0000e\\+00"
+best_U <- "2.5119e-04"
+# worst_U <- "1.0000e\\+02"
+worst_U <- "1.0000e\\+00"
+
+# Toggle best or mean fitness
+best_or_mean_f <- "Best" # "Best", "Mean"
+fitness_col <- paste0(best_or_mean_f, "_F")
 
 # Function to parse U (genome-wide mutation rate), rep, kind from filename
 # Expects: history_<startU>_<rep>_(fitness|mutation).csv
@@ -66,16 +72,16 @@ all_worst_df <- bind_rows(all_worst_df)
 avg_best_fit_df <- all_best_df %>%
               group_by(Start_U, Generation) %>%
               summarize(
-                Avg_Mean_F=mean(Mean_F, na.rm=TRUE),
-                SD_Mean_F=sd(Mean_F, na.rm=TRUE),
+                Avg_F=mean(.data[[fitness_col]], na.rm=TRUE),
+                SD_F=sd(.data[[fitness_col]], na.rm=TRUE),
                 .groups="drop"
               )
 
 avg_worst_fit_df <- all_worst_df %>%
               group_by(Start_U, Generation) %>%
               summarize(
-                Avg_Mean_F=mean(Mean_F, na.rm=TRUE),
-                SD_Mean_F=sd(Mean_F, na.rm=TRUE),
+                Avg_F=mean(.data[[fitness_col]], na.rm=TRUE),
+                SD_F=sd(.data[[fitness_col]], na.rm=TRUE),
                 .groups="drop"
               )
 
@@ -84,17 +90,17 @@ avg_fit_df <- bind_rows(avg_best_fit_df, avg_worst_fit_df)
 median_best_fit_df <- all_best_df %>%
                  group_by(Start_U, Generation) %>%
                  summarize(
-                    Median_F=median(Mean_F, na.rm=TRUE),
-                    Q1_F=quantile(Mean_F, 0.25, na.rm=TRUE),
-                    Q3_F=quantile(Mean_F, 0.75, na.rm=TRUE),
+                    Median_F=median(.data[[fitness_col]], na.rm=TRUE),
+                    Q1_F=quantile(.data[[fitness_col]], 0.25, na.rm=TRUE),
+                    Q3_F=quantile(.data[[fitness_col]], 0.75, na.rm=TRUE),
                     .groups="drop"
                 )
 median_worst_fit_df <- all_worst_df %>%
                  group_by(Start_U, Generation) %>%
                  summarize(
-                    Median_F=median(Mean_F, na.rm=TRUE),
-                    Q1_F=quantile(Mean_F, 0.25, na.rm=TRUE),
-                    Q3_F=quantile(Mean_F, 0.75, na.rm=TRUE),
+                    Median_F=median(.data[[fitness_col]], na.rm=TRUE),
+                    Q1_F=quantile(.data[[fitness_col]], 0.25, na.rm=TRUE),
+                    Q3_F=quantile(.data[[fitness_col]], 0.75, na.rm=TRUE),
                     .groups="drop"
                 )
 
@@ -108,8 +114,8 @@ eps <- 1e-12
 # FOR SSE - use error instead of fitness
 avg_err_df <- avg_fit_df %>%
             mutate(
-                Avg_Error = -Avg_Mean_F,
-                SD_Error = SD_Mean_F
+                Avg_Error = -Avg_F,
+                SD_Error = SD_F
             )
 
 
@@ -128,24 +134,20 @@ median_err_df <- median_fit_df %>%
     )
 
 median_err_log <- median_err_df %>%
-    # mutate(
-    #     y = pmax(Median_Error, eps),
-    #     ymin = pmax(Q1_Error, eps),
-    #     ymax = pmax(Q3_Error, eps)
-    # )
     mutate(
         y = pmax(Median_Error, eps),
-        ymin = ifelse(Q1_Error > 0, Q1_Error, NA_real_),
-        ymax = ifelse(Q1_Error > 0 & Q3_Error > 0, Q3_Error, NA_real_)
+        ymin = pmax(Q1_Error, eps),
+        ymax = pmax(Q3_Error, eps)
     )
+
 
 # -------------------------
 # Linear and log
 # -------------------------
-p_fit_linear <- ggplot(avg_fit_df, aes(x=Generation, y=Avg_Mean_F, color=factor(Start_U), group=Start_U)) +
+p_fit_linear <- ggplot(avg_fit_df, aes(x=Generation, y=Avg_F, color=factor(Start_U), group=Start_U)) +
                 geom_ribbon(
-                    aes(ymin=Avg_Mean_F - SD_Mean_F,
-                        ymax=Avg_Mean_F + SD_Mean_F,
+                    aes(ymin=Avg_F - SD_F,
+                        ymax=Avg_F + SD_F,
                         group=Start_U,
                         fill=factor(Start_U)),
                     # inherit.aes=TRUE,
@@ -155,7 +157,7 @@ p_fit_linear <- ggplot(avg_fit_df, aes(x=Generation, y=Avg_Mean_F, color=factor(
                 geom_line(linewidth=0.8) +
                 labs(
                     x="Generation",
-                    y="Mean fitness (across replicates)",
+                    y = paste("Mean of", best_or_mean_f, "fitness across replicates"),
                     color="Start U",
                     fill="Start U"
                 ) +
@@ -172,7 +174,7 @@ p_err_logy <- ggplot(
     scale_y_log10() +
     labs(
         x="Generation",
-        y="Mean error (-fitness)",
+        y = paste("Mean of", best_or_mean_f, "error across replicates"),
         color="Start U",
         fill="Start U"
     ) + 
@@ -195,7 +197,7 @@ p_err_logy_median <- ggplot(
     scale_y_log10() +
     labs(
         x="Generation",
-        y="Median error (-fitness)",
+        y = paste("Median of", best_or_mean_f, "error across replicates"),
         color="Start U",
         fill="Start U"
     ) +
