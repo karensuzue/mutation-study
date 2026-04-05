@@ -110,6 +110,8 @@ private:
     // where do dips end?
     const double dips_end = 99.9;
 
+    emp::BitVector change_indices; // reusable buffer for ChangeTarget
+
 public:
     Population() = default;
     Population(const Population &) = default;
@@ -281,38 +283,18 @@ public:
         for (double & gene : target_genome) {
             gene = random.GetDouble(gene_min, gene_max);
         }
+        change_indices.Resize(genome_size);
     }
 
     // Changes a random gene in the target genome
     void ChangeTarget(emp::Random & random) {
         assert(target_genome.size() == genome_size && "target_genome size does not match genome_size.");
-        // This method can pick the same genes more than once...
-        // for (size_t i = 0; i < change_per_step; ++i) {
-        //     size_t gene_idx = random.GetSizeT(genome_size);
-        //     target_genome[gene_idx] = random.GetDouble(gene_min, gene_max);
-        // }
-
-        emp::BitVector indices{genome_size}; // doesn't work, because genome_size is a runtime variable...
-        indices.ChooseRandom(random, change_per_step);
-        for (size_t idx : indices) { // Iterates only over bits set to 1
+        change_indices.Clear();
+        change_indices.ChooseRandom(random, change_per_step);
+        for (size_t idx : change_indices) { // Iterates only over bits set to 1
             std::cout << idx << ", ";
             target_genome[idx] = random.GetDouble(gene_min, gene_max);
         }
-
-        // Build a shuffled index list and take the first change_per_step of them
-        // emp::vector<size_t> indices(genome_size);
-        // std::iota(indices.begin(), indices.end(), 0);
-
-        // // Shuffle only the first change_per_step slots
-        // const size_t n = std::min(change_per_step, genome_size);
-        // for (size_t i = 0; i < n; ++i) {
-        //     size_t j = i + random.GetSizeT(genome_size - i);
-        //     std::swap(indices[i], indices[j]);
-        // }
-
-        // for (size_t i = 0; i < n; ++i) {
-        //     target_genome[indices[i]] = random.GetDouble(gene_min, gene_max);
-        // }
     }
 
     // This function computes the fitness of the whole population
