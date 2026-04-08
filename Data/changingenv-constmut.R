@@ -16,7 +16,7 @@ DATA_DIR <- "/mnt/d/MINE/sse-changingenv-constmut/"
 OUT_DIR <- "."
 
 # Values to plot
-U_RATES    <- c("2.5119e-04", "3.1623e-04", "1.0000e+00", "1.0000e+02")
+U_RATES    <- c("2.5119e-04", "3.1623e-04", "6.6667e-01", "1.0000e+00", "1.0000e+02")
 CHANGE_STEPS <- c(2000, 1000, 500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01)
 
 # These appear in filenames
@@ -24,7 +24,7 @@ CHANGE_STEPS_FILE <- c(2000, 1000, 500, 200, 100, 50, 20, 10, 5, 2, 1)
 CHANGE_PER_FILE <- c(1, 2, 5, 10, 20, 50, 100)
 
 # Toggle best or mean fitness
-WHICH_FITNESS <- "Mean" # "Best", "Mean"
+WHICH_FITNESS <- "Best" # "Best", "Mean"
 FITNESS_NAME <- paste0(WHICH_FITNESS, "_F")
 
 # Reading every generation is heavy
@@ -174,6 +174,14 @@ ts_summary <- all_df %>%
                 .groups = "drop"
             )
 
+eps <- 1e-8
+ts_summary_log <- ts_summary %>%
+  mutate(
+    med_err = pmax(med_err, eps),
+    q25_err = pmax(q25_err, eps),
+    q75_err = pmax(q75_err, eps)
+  )
+
 # ---------------------------------------------------------------------
 # PLOT 1: HEATMAP - mean final fitness, U x change_env_step
 # ---------------------------------------------------------------------
@@ -216,7 +224,7 @@ plot_ts <- ggplot(ts_summary,
             ) +
             custom_theme()
 
-plot_ts_log <- ggplot(ts_summary,
+plot_ts_log <- ggplot(ts_summary_log,
                     aes(x = Generation, color = step_fac, fill = step_fac)) +
             geom_ribbon(aes(ymin = q25_err, ymax = q75_err), alpha = 0.15) +
             geom_line(aes(y = med_err), linewidth = 0.6) +
