@@ -50,7 +50,7 @@ void PrintUsage() {
         << "  --change_per_step <size_t>    Number of target genes to modify at each env. change; valid only for ChangingEnv translator\n\n"
 
         << "  --selector <string>           Choose a selector: Tournament\n"
-        << "  --translator <string>         Choose a genome-to-phenotype translator: ExploitationRate, ChangingEnv\n"
+        << "  --translator <string>         Choose a genome-to-phenotype translator: ExploitationRate (as-is), ChangingEnv\n"
         << "  --evaluator <string>          Choose a fitness evaluator: Aggregate, SquaredError\n\n"
 
         << "  --help                        Show this message\n";

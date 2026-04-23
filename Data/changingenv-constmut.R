@@ -24,7 +24,7 @@ CHANGE_STEPS_FILE <- c(2000, 1000, 500, 200, 100, 50, 20, 10, 5, 2, 1)
 CHANGE_PER_FILE <- c(1, 2, 5, 10, 20, 50, 100)
 
 # Toggle best or mean fitness
-WHICH_FITNESS <- "Best" # "Best", "Mean"
+WHICH_FITNESS <- "Mean" # "Best", "Mean"
 FITNESS_NAME <- paste0(WHICH_FITNESS, "_F")
 
 # Reading every generation is heavy

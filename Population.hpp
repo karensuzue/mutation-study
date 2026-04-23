@@ -11,6 +11,9 @@
 #include <cassert>
 #include <iomanip>
 #include <functional>
+#include <algorithm>
+#include <execution>
+#include <omp.h>
 
 #include "emp/base/vector.hpp"
 #include "emp/math/Random.hpp"
@@ -292,26 +295,24 @@ public:
         change_indices.Clear();
         change_indices.ChooseRandom(random, change_per_step);
         for (size_t idx : change_indices) { // Iterates only over bits set to 1
-            std::cout << idx << ", ";
+            // std::cout << idx << ", ";
             target_genome[idx] = random.GetDouble(gene_min, gene_max);
         }
     }
 
     // This function computes the fitness of the whole population
     void EvaluateFitness() {
-        for (Organism & org : organisms) {
-            const genome_t & g = org.GetGenome();
-
-            phenotype_t p = translator_fn(g);
-
-            if (valley_crossing) {
-                p = evaluator.MultiValleyCrossing(p, peaks, dips_start, dips_end);
-            }
-
-            org.SetPhenotype(p);
-            double fitness = evaluator_fn(p);
-            org.SetFitness(fitness);
-        }
+        std::for_each(std::execution::par_unseq, organisms.begin(), organisms.end(), 
+                        [this](Organism & org) {
+                            const genome_t & g = org.GetGenome();
+                            phenotype_t p = translator_fn(g);
+                            if (valley_crossing) {
+                                p = evaluator.MultiValleyCrossing(p, peaks, dips_start, dips_end);
+                            }
+                            org.SetPhenotype(p);
+                            double fitness = evaluator_fn(p);
+                            org.SetFitness(fitness);
+                        });
     }
 
     // In each generation, produce a 'pop_size' number of offspring
@@ -321,10 +322,19 @@ public:
                "pop_size does not match pop.organisms.size().");
 
         pop_t next_pop;
-        next_pop.reserve(pop_size);
+        next_pop.resize(pop_size);
+
+        // Make one seed per offspring to avoid racing on 'random'
+        emp::vector<size_t> seeds(pop_size);
         for (size_t i = 0; i < pop_size; ++i) {
-            const size_t parent_idx = selector_fn(organisms, random);
-            next_pop.push_back(organisms[parent_idx].Mutate(random, const_mutation_rate));
+            seeds[i] = random.GetUInt();
+        }
+
+        # pragma omp parallel for
+        for (size_t i = 0; i < pop_size; ++i) {
+            emp::Random local_rng(seeds[i]);
+            const size_t parent_idx = selector_fn(organisms, local_rng);
+            next_pop[i] = organisms[parent_idx].Mutate(local_rng, const_mutation_rate);
         }
         organisms.swap(next_pop);
     }

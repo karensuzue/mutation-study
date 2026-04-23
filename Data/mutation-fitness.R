@@ -9,6 +9,9 @@ library(tidyr)
 library(ggplot2)
 library(stringr)
 
+# ---------------------------------------------------------------------
+# CONFIG
+# ---------------------------------------------------------------------
 
 root_const <- "/mnt/d/MINE/sse-staticenv-constmut/"
 root_evolve <- "./diag-exploit-vc/evolve-diag-final/"
@@ -17,64 +20,143 @@ root_evolve <- "./diag-exploit-vc/evolve-diag-final/"
 include_evolve <- FALSE
 
 # Toggle best or mean fitness
-best_or_mean_f <- "Best" # "Best", "Mean"
+best_or_mean_f <- "Mean" # "Best", "Mean"
+
+# Filename patterns:
+# (NEW) history_U{tag}_change{change_per_step}_per{change_env_step}_{rep}_{mutation|fitness}.csv
+# (OLD) history_{tag}_{rep}_{mutation|fitness}.csv
+pattern_new <- "^history_U([^_]+)_change([0-9]+)_per([0-9]+)_([0-9]+)_(mutation|fitness)\\.csv$"
+pattern_old <- "^history_([^_]+)_([0-9]+)_(mutation|fitness)\\.csv$"
+
+max_reps_per_U <- 20   # NULL = keep all replicates
+seed <- 1
+
+# ---------------------------------------------------------------------
+# HELPER FUNCTIONS
+# ---------------------------------------------------------------------
 
 # Function to grab the last row of a file
 read_last_row <- function(file) {
-    df <- read_csv(file, show_col_types=FALSE)
-    if (nrow(df) == 0) return(NULL)
-    return(df[nrow(df), , drop=FALSE])
+   df <- read_csv(file, show_col_types=FALSE)
+   if (nrow(df) == 0) return(NULL)
+   return(df[nrow(df), , drop=FALSE])
 }
 
-# Function to parse U (genome-wide mutation rate), rep, kind from filename
-# Expects: history_<startU>_<rep>_(fitness|mutation).csv
-# startU refers to the starting rate in runs with evolving mutation
 get_meta <- function(file) {
-    nm <- basename(file)
-    m <- regexec("^history_([^_]+)_([0-9]+)_(fitness|mutation)\\.csv$", nm)
-    parts <- regmatches(nm, m)[[1]]
-    if (length(parts) == 0) return(NULL)
-    return(list(U=as.numeric(parts[2]), rep=as.integer(parts[3]), kind=parts[4]))
+   base <- basename(file)
+
+   if (str_detect(base, pattern_new)) {
+      m <- str_match(base, pattern_new)
+      return(list(
+         U = m[, 2],
+         change_per_step = m[, 3],
+         change_env_step = m[, 4],
+         rep = m[, 5],
+         type = m[, 6]
+      ))
+   }
+
+   if (str_detect(base, pattern_old)) {
+      m <- str_match(base, pattern_old)
+      return(list(
+         U = m[, 2],
+         change_per_step = NA_character_,
+         change_env_step = NA_character_,
+         rep = m[, 3],
+         type = m[, 4]
+      ))
+   }
+   return(NULL)
 }
 
 # Function to compile all final generation results
 # Takes in a vector of filenames
-# Outputs a single data frame where each row corresponds to one file (one rep + kind)
-# i.e., rep | kind | value | U 
+# Outputs a single data frame where each row corresponds to one file (one rep + type)
+# i.e., rep | type | value | U 
 compile_all <- function(files) {
-    rows <- list()
-    for (f in files) {
-        # Get metadata
-        meta <- get_meta(f)
-        if (is.null(meta)) next
-        # Grab last row
-        last_row <- read_last_row(f)
-        if (is.null(last_row)) next
-        # Get the "Mean/Best_*" value from that row
-        val <- if (meta$kind == "fitness") last_row[[paste0(best_or_mean_f, "_F")]] else last_row$Mean_U
-        # Append a new row to 'rows'
-        rows[[length(rows)+1]] <- data.frame(rep=meta$rep, kind=meta$kind, value=as.numeric(val), U=meta$U)
-    }
-    # rows_df <- do.call(rbind, rows)
-    rows_df <- bind_rows(rows) # rows is a list of rows, so we bind
-    return(rows_df)
+   rows <- list()
+   for (f in files) {
+      # Get metadata
+      meta <- get_meta(f)
+      if (is.null(meta)) next
+
+      # Grab last row
+      last_row <- read_last_row(f)
+      if (is.null(last_row)) next
+
+      # Get the "Mean/Best_*" value from that row
+      val <- if (meta$type == "fitness") last_row[[paste0(best_or_mean_f, "_F")]] else last_row$Mean_U
+      
+      # Append a new row to 'rows'
+      rows[[length(rows)+1]] <- data.frame(rep=as.integer(meta$rep), type=meta$type, value=as.numeric(val), U=as.numeric(meta$U))
+   }
+   # rows_df <- do.call(rbind, rows)
+   rows_df <- bind_rows(rows) # rows is a list of rows, so we bind
+   return(rows_df)
 }
 
-# Grab all history files we need
-files_const <- dir_ls(root_const, recurse=TRUE, regexp="history_.*_(fitness|mutation)\\.csv$")
-# files_const
+subsample_reps <- function(df) {
+   if (is.null(max_reps_per_U)) return(df)
+
+   set.seed(seed)
+
+   keepers <- df %>%
+      group_by(U) %>%
+      slice_sample(n=max_reps_per_U) %>%
+      ungroup()
+
+   new_df <- df %>% semi_join(keepers, by = c("U", "rep"))
+   return(new_df)
+}
+
+# ---------------------------------------------------------------------
+# FIND FILES
+# ---------------------------------------------------------------------
+# Old-format constant files
+files_const_old <- dir_ls(
+  root_const,
+  recurse = TRUE,
+  regexp = "history_([^_]+)_([0-9]+)_(mutation|fitness)\\.csv$"
+)
+
+# New-format constant files
+files_const_new <- dir_ls(
+  root_const,
+  recurse = TRUE,
+  regexp = "history_U([^_]+)_change([0-9]+)_per([0-9]+)_([0-9]+)_(mutation|fitness)\\.csv$"
+)
+
+# Combine both...
+files_const <- c(files_const_old, files_const_new)
+
 
 if (include_evolve) {
-   files_evolve <- dir_ls(root_evolve, recurse=TRUE, regexp="history_.*_(fitness|mutation)\\.csv$")
-   # files_evolve
+  files_evolve_old <- dir_ls(
+    root_evolve,
+    recurse = TRUE,
+    regexp = "history_([^_]+)_([0-9]+)_(mutation|fitness)\\.csv$"
+  )
+
+  files_evolve_new <- dir_ls(
+    root_evolve,
+    recurse = TRUE,
+    regexp = "history_U([^_]+)_change([0-9]+)_per([0-9]+)_([0-9]+)_(mutation|fitness)\\.csv$"
+  )
+
+  files_evolve <- c(files_evolve_old, files_evolve_new)
 }
 
-# -------------------------
-# Constant mutation summary
-# -------------------------
-const_long <- compile_all(files_const)
+# ---------------------------------------------------------------------
+# CONSTANT MUTATION SUMMARY
+# ---------------------------------------------------------------------
+const_long <- compile_all(files_const) %>%
+              subsample_reps()
+            #   mutate(
+            #    U=as.numeric(U),
+            #    rep=as.integer(rep)
+            # )
 const_wide <- const_long %>% 
-              pivot_wider(names_from=kind, values_from=value) %>%
+              pivot_wider(names_from=type, values_from=value) %>%
               filter(is.finite(fitness), is.finite(mutation)) %>%
               mutate(error = -fitness)
 
@@ -94,7 +176,6 @@ const_summary <- const_wide %>%
 # const_summary
 # write_csv(const_summary, "const_summary.csv")
 
-
 best_U_avg <- const_summary %>%
               slice_max(order_by=avg_fit, n=1, with_ties=TRUE)
 best_U_avg
@@ -112,13 +193,18 @@ worst_U_x_log <- log10(worst_U_avg$U[1])
 worst_U_x_lin <- worst_U_avg$U[1]
 
 
-# -------------------------
-# Evolving mutation summary
-# -------------------------
+# ---------------------------------------------------------------------
+# EVOLVING MUTATION SUMMARY
+# ---------------------------------------------------------------------
 if (include_evolve) {
-   evo_long <- compile_all(files_evolve)
+   evo_long <- compile_all(files_evolve) %>%
+               subsample_reps()
+               # mutate(
+               #    U=as.numeric(U),
+               #    rep=as.integer(rep)
+               # )
    evo_wide <- evo_long %>%
-               pivot_wider(names_from=kind, values_from=value) %>%
+               pivot_wider(names_from=type, values_from=value) %>%
                rename(endU=mutation, startU=U) %>%
                filter(is.finite(fitness), is.finite(endU)) %>%
                mutate(error = -fitness)
@@ -142,7 +228,7 @@ if (include_evolve) {
                   arrange(startU)
    # evo_summary
 
-   write_csv(evo_summary, "evo_summary.csv")
+   # write_csv(evo_summary, "evo_summary.csv")
 }
 
 # -------------------------
@@ -151,7 +237,7 @@ if (include_evolve) {
 p <- ggplot() +
      geom_point(
         data=const_wide,
-        aes(x=log10(mutation), y=log10(pmax(error, 1e-12))),
+        aes(x=log10(U), y=log10(pmax(error, 1e-12))),
         alpha=0.25, size=1
      ) +
      geom_line(
@@ -223,7 +309,7 @@ if (include_evolve) {
 }
 
 ggsave(
-   if (include_evolve) "fig_loglog_evolvemut.pdf" else "fig_loglog_constmut.pdf",
+   if (include_evolve) "staticenv_evolvemut_mfloglog.pdf" else "staticenv_constmut_mfloglog.pdf",
    p,
    width = 7,
    height = 5
@@ -235,12 +321,12 @@ ggsave(
 p2 <- ggplot() +
      geom_point(
         data=const_wide,
-        aes(x=mutation, y=fitness),
+        aes(x=U, y=fitness),
         alpha=0.25, size=1
      ) +
      geom_line(
         data=const_summary,
-        aes(x=(U), y=(avg_fit)),
+        aes(x=U, y=avg_fit),
         linewidth=1
      ) +
      # best constant U vertical line
@@ -308,7 +394,7 @@ if (include_evolve) {
 }
 
 ggsave(
-   if (include_evolve) "fig_linear_evolvemut.pdf" else "fig_linear_constmut.pdf",
+   if (include_evolve) "staticenv_evolvemut_mf.pdf" else "staticenv_constmut_mf.pdf",
    p2,
    width = 7,
    height = 5

@@ -8,8 +8,7 @@ struct Evaluate {
 
     /* ------- GENOTYPE TO PHENOTYPE TRANSLATORS -------*/
     phenotype_t ExploitationRate(const genome_t & g) {
-        phenotype_t p = g;
-        return p;
+        return g;
     }
 
     /*
