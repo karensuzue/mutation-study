@@ -11,9 +11,9 @@
 #include <cassert>
 #include <iomanip>
 #include <functional>
-#include <algorithm>
-#include <execution>
-#include <omp.h>
+#include <tbb/parallel_for_each.h>
+#include <tbb/parallel_for.h>
+#include <tbb/blocked_range.h>
 
 #include "emp/base/vector.hpp"
 #include "emp/math/Random.hpp"
@@ -302,17 +302,20 @@ public:
 
     // This function computes the fitness of the whole population
     void EvaluateFitness() {
-        std::for_each(std::execution::par_unseq, organisms.begin(), organisms.end(), 
-                        [this](Organism & org) {
-                            const genome_t & g = org.GetGenome();
-                            phenotype_t p = translator_fn(g);
-                            if (valley_crossing) {
-                                p = evaluator.MultiValleyCrossing(p, peaks, dips_start, dips_end);
-                            }
-                            org.SetPhenotype(p);
-                            double fitness = evaluator_fn(p);
-                            org.SetFitness(fitness);
-                        });
+        tbb::parallel_for_each(
+            organisms.begin(), organisms.end(),
+            [this](Organism & org) {
+                const genome_t & g = org.GetGenome();
+                phenotype_t p = translator_fn(g);
+                if (valley_crossing) {
+                    p = evaluator.MultiValleyCrossing(p, peaks, dips_start, dips_end);
+                }
+                double fitness = evaluator_fn(p);
+                
+                org.SetPhenotype(p);
+                org.SetFitness(fitness);
+            }
+        );
     }
 
     // In each generation, produce a 'pop_size' number of offspring
@@ -330,12 +333,16 @@ public:
             seeds[i] = random.GetUInt();
         }
 
-        # pragma omp parallel for
-        for (size_t i = 0; i < pop_size; ++i) {
-            emp::Random local_rng(seeds[i]);
-            const size_t parent_idx = selector_fn(organisms, local_rng);
-            next_pop[i] = organisms[parent_idx].Mutate(local_rng, const_mutation_rate);
-        }
+        tbb::parallel_for(
+            tbb::blocked_range<size_t>(0, pop_size),
+            [this, &seeds, &next_pop](const tbb::blocked_range<size_t> & range) {
+                for (size_t i = range.begin(); i != range.end(); ++i) {
+                    emp::Random local_rng(seeds[i]);
+                    const size_t parent_idx = selector_fn(organisms, local_rng);
+                    next_pop[i] = organisms[parent_idx].Mutate(local_rng, const_mutation_rate);
+                }
+            }
+        ); 
         organisms.swap(next_pop);
     }
 

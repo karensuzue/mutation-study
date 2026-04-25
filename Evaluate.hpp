@@ -7,7 +7,7 @@ struct Evaluate {
     using genome_t = emp::vector<double>;
 
     /* ------- GENOTYPE TO PHENOTYPE TRANSLATORS -------*/
-    phenotype_t ExploitationRate(const genome_t & g) {
+    phenotype_t ExploitationRate(const genome_t & g) const {
         return g;
     }
 
@@ -34,7 +34,7 @@ struct Evaluate {
     phenotype_t MultiValleyCrossing(const phenotype_t & p, 
                                     const phenotype_t & peaks, 
                                     const double & dips_start, 
-                                    const double & dips_end) {
+                                    const double & dips_end) const {
 
         // Quick checks
         emp_assert(peaks.size() > 0);
@@ -56,7 +56,7 @@ struct Evaluate {
     }
 
     /* ------- FITNESS CALCULATORS -------*/
-    double AggregateFitness(const phenotype_t & p, size_t start_idx=0) {
+    double AggregateFitness(const phenotype_t & p, size_t start_idx=0) const {
         assert(!p.empty());
         assert(start_idx < p.size());
         double fitness = std::accumulate(p.begin() + start_idx, 
@@ -65,7 +65,7 @@ struct Evaluate {
     }
 
     // Calculate the sum of squared errors across each gene
-    double SquaredErrorFitness(const phenotype_t & g, const phenotype_t & target_g) {
+    double SquaredErrorFitness(const phenotype_t & g, const phenotype_t & target_g) const {
         assert(g.size() == target_g.size());
 
         double error_sum = 0.0;
